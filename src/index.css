@@ -1,0 +1,305 @@
+/* Space Grotesk — fonte display dos rótulos do Funil de Consciência */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Paleta por tema (CSS variables, canais RGB) ────────────────
+   :root            → tema DARK (grafite, padrão)
+   html.theme-light → tema CLARO estilo Claude (papel creme quente)
+
+   A escala `gray` e o `accent` no tailwind.config.js apontam para estas
+   variáveis via rgb(var(--c-gray-x) / <alpha-value>), então trocar a classe
+   no <html> reflete em toda a plataforma.
+
+   Os papéis semânticos da escala se mantêm entre temas:
+     gray-950 = fundo principal · gray-900 = cards · gray-800 = bordas/realce
+     gray-100 / text-white = texto primário · gray-400/500 = texto secundário
+─────────────────────────────────────────────────────────────── */
+:root {
+  /* DARK (grafite claro) — superfícies ~1 tom acima do grafite original
+     para uma leitura mais leve; textos (100–500) inalterados */
+  --c-gray-50:  250 250 252;
+  --c-gray-100: 240 240 244;
+  --c-gray-200: 226 226 232;
+  --c-gray-300: 201 201 210;
+  --c-gray-400: 168 168 180;
+  --c-gray-500: 132 132 145;
+  --c-gray-600:  96  96 107;
+  --c-gray-700:  66  66  76;   /* bordas de input (era 52 52 60) */
+  --c-gray-800:  52  52  60;   /* bordas / realce (era 38 38 44) */
+  --c-gray-900:  38  38  45;   /* cards (era 26 26 31) */
+  --c-gray-950:  30  30  36;   /* fundo principal (era 19 19 22) */
+
+  --c-accent:       200 255 0;
+  --c-accent-hover: 212 255 51;
+
+  /* "Chrome" (sidebar / topbar) e navegação */
+  --chrome-bg:       #222228;
+  --chrome-border:   rgba(255, 255, 255, 0.08);
+  --chrome-hover:    rgba(255, 255, 255, 0.06);
+  --nav-inactive:    #7B87A0;
+  --nav-hover-text:  #E2E8F0;
+
+  color-scheme: dark;
+}
+
+html.theme-light {
+  /* CLARO estilo Claude (papel creme quente, levemente escurecido) */
+  --c-gray-950: 233 229 219;  /* fundo principal (creme/greige) */
+  --c-gray-900: 246 244 238;  /* cards (off-white) */
+  --c-gray-800: 214 209 196;  /* bordas / cabeçalho de tabela / realce */
+  --c-gray-700: 199 193 178;  /* bordas de input */
+  --c-gray-600: 168 162 148;
+  --c-gray-500: 130 124 110;  /* texto terciário */
+  --c-gray-400: 100  94  80;  /* texto secundário */
+  --c-gray-300:  82  77  68;
+  --c-gray-200:  58  54  48;
+  --c-gray-100:  41  38  33;  /* texto primário */
+  --c-gray-50:   26  24  21;
+
+  /* No tema claro, o accent vira o laranja/coral do Claude */
+  --c-accent:       217 119 87;   /* #D97757 */
+  --c-accent-hover: 201 100 66;   /* #C96442 */
+
+  --chrome-bg:       #EFEBE1;
+  --chrome-border:   rgba(0, 0, 0, 0.09);
+  --chrome-hover:    rgba(0, 0, 0, 0.05);
+  --nav-inactive:    #6B6557;
+  --nav-hover-text:  #292621;
+
+  color-scheme: light;
+}
+
+@layer base {
+  :root {
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-gray-950 text-gray-100 m-0;
+  }
+
+  a {
+    @apply text-brand-400 no-underline;
+  }
+
+  a:hover {
+    @apply text-brand-300;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-gray-900 border border-gray-800 rounded-xl p-4;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-black hover:bg-accent-hover;
+  }
+
+  .btn-ghost {
+    @apply btn text-gray-300 hover:bg-gray-800 hover:text-white;
+  }
+}
+
+/* Hover do "chrome" (sidebar/topbar), dirigido por variável de tema */
+.hover-chrome:hover { background-color: var(--chrome-hover); }
+
+/* ─── Overrides do tema DARK ─────────────────────────────────────
+   Mapeiam classes utilitárias "claras" (bg-white, text-gray-900...) para os
+   equivalentes escuros. Escopadas em html:not(.theme-light) para que, no tema
+   claro, essas classes voltem ao comportamento natural (ou ao override claro
+   definido mais abaixo). Regras sem @layer batem @layer utilities (cascata CSS).
+───────────────────────────────────────────────────────────────── */
+
+/* Background overrides */
+html:not(.theme-light) .bg-white          { background-color: #1A1A1F; }
+html:not(.theme-light) .bg-gray-50        { background-color: #202026; }
+html:not(.theme-light) .bg-slate-50       { background-color: #202026; }
+html:not(.theme-light) .bg-gray-100       { background-color: #222228; }
+html:not(.theme-light) .bg-slate-100      { background-color: #222228; }
+
+/* Border overrides */
+html:not(.theme-light) .border-gray-100   { border-color: rgba(255,255,255,0.06); }
+html:not(.theme-light) .border-gray-200   { border-color: rgba(255,255,255,0.08); }
+html:not(.theme-light) .border-gray-300   { border-color: rgba(255,255,255,0.10); }
+html:not(.theme-light) .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06); }
+
+/* Text overrides */
+html:not(.theme-light) .text-gray-900     { color: #F9FAFB; }
+html:not(.theme-light) .text-gray-800     { color: #ECECF1; }
+html:not(.theme-light) .text-gray-700     { color: #C9C9D2; }
+html:not(.theme-light) .text-gray-600     { color: #A3A3AE; }
+html:not(.theme-light) .text-slate-600    { color: #A3A3AE; }
+
+/* Blue → Accent */
+html:not(.theme-light) .bg-blue-600       { background-color: #C8FF00; }
+html:not(.theme-light) .text-blue-600     { color: #C8FF00; }
+html:not(.theme-light) .border-b-2.border-blue-600 { border-color: #C8FF00; }
+html:not(.theme-light) .bg-blue-600.text-white { color: #000000; }
+
+/* Hover states */
+html:not(.theme-light) .hover\:bg-blue-700:hover   { background-color: #D4FF33; }
+html:not(.theme-light) .hover\:bg-blue-700.text-white:hover { color: #000000; }
+html:not(.theme-light) .hover\:text-blue-700:hover { color: #D4FF33; }
+html:not(.theme-light) .hover\:bg-gray-50:hover    { background-color: #232329; }
+html:not(.theme-light) .hover\:bg-gray-100:hover   { background-color: #26262C; }
+html:not(.theme-light) .hover\:bg-blue-50:hover    { background-color: rgba(200,255,0,0.05); }
+html:not(.theme-light) .hover\:bg-red-50:hover     { background-color: rgba(248,113,113,0.08); }
+html:not(.theme-light) .hover\:bg-green-100:hover  { background-color: rgba(74,222,128,0.10); }
+html:not(.theme-light) .hover\:bg-gray-50 { background-color: #232329; }
+
+/* Focus rings */
+html:not(.theme-light) .focus\:ring-blue-500:focus { --tw-ring-color: rgba(200,255,0,0.40); }
+
+/* Status light backgrounds (light → dark equivalents) */
+html:not(.theme-light) .bg-green-50       { background-color: #052E16; }
+html:not(.theme-light) .bg-green-100      { background-color: #052E16; }
+html:not(.theme-light) .border-green-200  { border-color: rgba(74,222,128,0.20); }
+html:not(.theme-light) .border-green-300  { border-color: rgba(74,222,128,0.30); }
+html:not(.theme-light) .text-green-700    { color: #4ADE80; }
+html:not(.theme-light) .text-green-800    { color: #4ADE80; }
+html:not(.theme-light) .bg-green-600      { background-color: #16A34A; }
+html:not(.theme-light) .hover\:bg-green-700:hover { background-color: #15803D; }
+
+html:not(.theme-light) .bg-red-50         { background-color: #2B0A0A; }
+html:not(.theme-light) .bg-red-100        { background-color: #2B0A0A; }
+html:not(.theme-light) .border-red-200    { border-color: rgba(248,113,113,0.20); }
+html:not(.theme-light) .border-red-300    { border-color: rgba(248,113,113,0.30); }
+html:not(.theme-light) .text-red-700      { color: #F87171; }
+html:not(.theme-light) .text-red-800      { color: #F87171; }
+
+html:not(.theme-light) .bg-yellow-50      { background-color: #2B1500; }
+html:not(.theme-light) .bg-yellow-100     { background-color: #2B1500; }
+html:not(.theme-light) .border-yellow-200 { border-color: rgba(252,211,77,0.20); }
+html:not(.theme-light) .text-yellow-800   { color: #FCD34D; }
+
+html:not(.theme-light) .bg-orange-50      { background-color: #2B1200; }
+html:not(.theme-light) .border-orange-200 { border-color: rgba(251,146,60,0.20); }
+html:not(.theme-light) .text-orange-800   { color: #FB923C; }
+
+html:not(.theme-light) .bg-blue-50        { background-color: rgba(59,130,246,0.10); }
+html:not(.theme-light) .border-blue-200   { border-color: rgba(96,165,250,0.20); }
+html:not(.theme-light) .text-blue-700     { color: #93C5FD; }
+html:not(.theme-light) .text-blue-800     { color: #93C5FD; }
+html:not(.theme-light) .bg-blue-100       { background-color: rgba(59,130,246,0.12); }
+
+html:not(.theme-light) .bg-purple-50      { background-color: rgba(168,85,247,0.10); }
+html:not(.theme-light) .border-purple-200 { border-color: rgba(168,85,247,0.20); }
+html:not(.theme-light) .text-purple-700   { color: #C084FC; }
+html:not(.theme-light) .text-purple-800   { color: #C084FC; }
+
+html:not(.theme-light) .bg-indigo-50      { background-color: rgba(99,102,241,0.10); }
+html:not(.theme-light) .border-indigo-200 { border-color: rgba(99,102,241,0.20); }
+html:not(.theme-light) .text-indigo-700   { color: #A5B4FC; }
+
+/* Shadow adjustments (dark) */
+html:not(.theme-light) .shadow-sm         { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.4); }
+html:not(.theme-light) .shadow            { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.5), 0 1px 2px -1px rgba(0,0,0,0.5); }
+html:not(.theme-light) .shadow-2xl        { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); }
+
+/* Input / select / textarea — DARK */
+html:not(.theme-light) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html:not(.theme-light) select,
+html:not(.theme-light) textarea {
+  background-color: #222228;
+  border-color: rgba(255,255,255,0.10);
+  color: #E2E2E8;
+}
+html:not(.theme-light) input:not([type="checkbox"]):not([type="radio"]):not([type="file"])::placeholder,
+html:not(.theme-light) textarea::placeholder {
+  color: #55555F;
+}
+html:not(.theme-light) input[type="checkbox"] {
+  background-color: #34343C;
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* Skeleton pulse — DARK */
+html:not(.theme-light) .animate-pulse.bg-gray-200,
+html:not(.theme-light) .animate-pulse.rounded.bg-gray-200 {
+  background-color: #2C2C33;
+}
+
+/* ─── Overrides do tema CLARO (Claude) ───────────────────────────
+   Reposiciona as classes utilitárias "claras" para valores quentes legíveis e
+   ajusta texto/inputs/sombras/scrollbar. text-white (texto primário) passa a
+   escuro; não há gradientes/overlays usando text-white puro neste app.
+───────────────────────────────────────────────────────────────── */
+
+/* Texto primário sobre superfícies claras */
+html.theme-light .text-white       { color: #29261F; }
+html.theme-light .text-gray-900    { color: #1F1D1A; }
+html.theme-light .text-gray-800    { color: #29261F; }
+html.theme-light .text-gray-700    { color: #4A4640; }
+html.theme-light .text-gray-600    { color: #6B6557; }
+html.theme-light .text-slate-600   { color: #6B6557; }
+html.theme-light .text-slate-700   { color: #4A4640; }
+html.theme-light .text-slate-200,
+html.theme-light .text-slate-300   { color: #6B6557; }
+
+/* Superfícies claras */
+html.theme-light .bg-white         { background-color: #F6F4EE; }
+html.theme-light .bg-gray-50       { background-color: #E3DFD4; }
+html.theme-light .bg-slate-50      { background-color: #E3DFD4; }
+html.theme-light .bg-gray-100      { background-color: #DCD7CB; }
+html.theme-light .bg-slate-100     { background-color: #DCD7CB; }
+
+/* Blue → Accent (coral do Claude no tema claro) */
+html.theme-light .bg-blue-600      { background-color: rgb(var(--c-accent)); }
+html.theme-light .text-blue-600    { color: #A8502F; }
+html.theme-light .bg-blue-600.text-white { color: #1F1D1A; }
+html.theme-light .hover\:bg-blue-700:hover { background-color: rgb(var(--c-accent-hover)); }
+html.theme-light .hover\:bg-blue-700.text-white:hover { color: #1F1D1A; }
+
+/* Sombras suaves no claro */
+html.theme-light .shadow-sm        { box-shadow: 0 1px 2px 0 rgba(41,38,31,0.06); }
+html.theme-light .shadow           { box-shadow: 0 1px 3px 0 rgba(41,38,31,0.08), 0 1px 2px -1px rgba(41,38,31,0.06); }
+html.theme-light .shadow-2xl       { box-shadow: 0 25px 50px -12px rgba(41,38,31,0.18); }
+
+/* Inputs claros */
+html.theme-light input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html.theme-light select,
+html.theme-light textarea {
+  background-color: #F6F4EE;
+  border-color: rgba(0,0,0,0.14);
+  color: #29261F;
+}
+html.theme-light input:not([type="checkbox"]):not([type="radio"]):not([type="file"])::placeholder,
+html.theme-light textarea::placeholder {
+  color: #A39C8C;
+}
+
+/* Skeleton pulse — CLARO */
+html.theme-light .animate-pulse.bg-gray-200,
+html.theme-light .animate-pulse.rounded.bg-gray-200 {
+  background-color: #E7E3DA;
+}
+
+/* ─── Comum aos dois temas ───────────────────────────────────────── */
+
+input[type="date"] { color-scheme: inherit; }
+
+/* Scroll bar (dirigida por variáveis) */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: rgb(var(--c-gray-900)); }
+::-webkit-scrollbar-thumb        { background: rgb(var(--c-gray-700)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: rgb(var(--c-gray-600)); }
+
+/* Animation for toasts */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}

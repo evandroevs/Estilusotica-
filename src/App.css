@@ -1,0 +1,4 @@
+/* Estilos globais adicionais — preferir Tailwind classes */
+#root {
+  min-height: 100vh;
+}
