@@ -14,8 +14,16 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session ?? null);
+    // Sem tela de login: se não há sessão salva, cria uma sessão anônima
+    // (anonymous sign-in habilitado no projeto). A sessão fica no localStorage.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) console.error("Falha no login anônimo:", error.message);
+        setSession(data?.session ?? null);
+        return;
+      }
+      setSession(session);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

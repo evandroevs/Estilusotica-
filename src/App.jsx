@@ -6,7 +6,6 @@ import { queryClient }     from "./lib/queryClient";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Sidebar            from "./components/layout/Sidebar";
 import TopBar             from "./components/layout/TopBar";
-import Login              from "./pages/Login";
 import { ToastProvider }  from "./context/ToastContext";
 import { ThemeProvider }  from "./context/ThemeContext";
 
@@ -74,10 +73,11 @@ function AppLayout() {
   );
 }
 
-// ─── AuthGate — decide o que renderizar com base na sessão ─────
+// ─── SessionGate — segura o render até a sessão anônima existir ─
+// Sem isso as primeiras queries disparam sem JWT e o RLS devolve vazio.
 
-function AuthGate() {
-  const { user, loading } = useAuth();
+function SessionGate() {
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -86,8 +86,6 @@ function AuthGate() {
       </div>
     );
   }
-
-  if (!user) return <Login />;
 
   return <AppLayout />;
 }
@@ -109,7 +107,7 @@ export default function App() {
               <Routes>
                 {/* Callback OAuth do Google (popup) */}
                 <Route path="/ga4/callback" element={<GA4Callback />} />
-                <Route path="/*" element={<AuthGate />} />
+                <Route path="/*" element={<SessionGate />} />
               </Routes>
             </Suspense>
           </ToastProvider>

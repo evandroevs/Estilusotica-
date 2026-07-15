@@ -25,3 +25,5 @@ dist-ssr
 
 # copia de referencia do projeto original (nao versionada)
 creative-lab-main/
+.vercel
+.env*

@@ -1,9 +1,7 @@
-import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { LogOut, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
 export default function TopBar({ title, sidebarWidth = 240 }) {
-  const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === "light";
 
@@ -37,14 +35,6 @@ export default function TopBar({ title, sidebarWidth = 240 }) {
           {isLight ? <Moon size={15} /> : <Sun size={15} />}
         </button>
 
-        <button
-          type="button"
-          onClick={signOut}
-          title="Sair"
-          className="hover-chrome flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-white transition-colors"
-        >
-          <LogOut size={15} />
-        </button>
       </div>
     </header>
   );
