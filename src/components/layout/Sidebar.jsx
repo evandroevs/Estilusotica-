@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   Target, LayoutDashboard, ChevronsLeft, ChevronsRight, Trophy,
 } from "lucide-react";
+import { BRAND_NAME } from "../../lib/brand";
 
 const NAV_ITEMS = [
   { to: "/",               Icon: LayoutDashboard, label: "Dashboard"      },
@@ -25,7 +26,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         </div>
         {!collapsed && (
           <span className="text-white font-bold text-sm tracking-tight whitespace-nowrap overflow-hidden">
-            Estilusótica
+            {BRAND_NAME}
           </span>
         )}
       </div>
@@ -63,7 +64,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       >
         {!collapsed && (
           <p className="text-[10px] text-gray-500 px-3 mb-2 whitespace-nowrap overflow-hidden">
-            © 2026 Estilusótica
+            © 2026 {BRAND_NAME}
           </p>
         )}
         <button

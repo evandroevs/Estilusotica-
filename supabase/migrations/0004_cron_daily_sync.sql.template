@@ -1,0 +1,37 @@
+-- =============================================================
+-- Creative Lab v2 — Cron diário de sincronização
+-- =============================================================
+-- Roda meta-sync todo dia às 09:00 (UTC) para os ÚLTIMOS 7 DIAS.
+-- 7 dias cabem em uma única invocação (< 150s); dias mais antigos já
+-- ficam persistidos em meta_ads_daily e não precisam ser re-sincronizados.
+-- =============================================================
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- Remove agendamento anterior, se existir (idempotente em re-push)
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'meta-sync-daily') then
+    perform cron.unschedule('meta-sync-daily');
+  end if;
+end $$;
+
+select cron.schedule(
+  'meta-sync-daily',
+  '0 9 * * *',
+  $$
+  select net.http_post(
+    url     := 'https://wuooediygigawvmdbfob.supabase.co/functions/v1/meta-sync',
+    headers := jsonb_build_object(
+      'Content-Type',  'application/json',
+      'apikey',        'sb_publishable_VOSSpEsqkZtvmXy1DB7_OA_Kq5DeMto',
+      'Authorization', 'Bearer sb_publishable_VOSSpEsqkZtvmXy1DB7_OA_Kq5DeMto'
+    ),
+    body    := jsonb_build_object(
+      'date_start', (now() - interval '7 days')::date::text,
+      'date_stop',  now()::date::text
+    )
+  );
+  $$
+);

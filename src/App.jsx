@@ -8,6 +8,7 @@ import Sidebar            from "./components/layout/Sidebar";
 import TopBar             from "./components/layout/TopBar";
 import { ToastProvider }  from "./context/ToastContext";
 import { ThemeProvider }  from "./context/ThemeContext";
+import { BRAND_NAME } from "./lib/brand";
 
 // Code splitting por rota: cada página vira um chunk próprio — o primeiro
 // carregamento baixa só o necessário (React Flow e Recharts só nas páginas que usam).
@@ -33,7 +34,7 @@ const PAGE_TITLES = {
 
 function AppLayout() {
   const { pathname } = useLocation();
-  const title = PAGE_TITLES[pathname] ?? "Estilusótica";
+  const title = PAGE_TITLES[pathname] ?? BRAND_NAME;
 
   const [collapsed, setCollapsed] = useState(() =>
     localStorage.getItem("sidebar-collapsed") === "true",

@@ -1,0 +1,39 @@
+-- =============================================================
+-- Creative Lab v2 — Cron horário do dia atual
+-- =============================================================
+-- Roda meta-sync de hora em hora (minuto 30) para ONTEM + HOJE,
+-- mantendo as métricas do dia corrente atualizadas ao longo do dia.
+-- Ontem entra junto para capturar atribuições tardias na virada.
+-- O job diário das 09:00 UTC (últimos 7 dias) continua existindo.
+-- Minuto 30 para não colidir com o job diário (minuto 0).
+-- =============================================================
+
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- Remove agendamento anterior, se existir (idempotente em re-push)
+do $$
+begin
+  if exists (select 1 from cron.job where jobname = 'meta-sync-hourly-today') then
+    perform cron.unschedule('meta-sync-hourly-today');
+  end if;
+end $$;
+
+select cron.schedule(
+  'meta-sync-hourly-today',
+  '30 * * * *',
+  $$
+  select net.http_post(
+    url     := 'https://wuooediygigawvmdbfob.supabase.co/functions/v1/meta-sync',
+    headers := jsonb_build_object(
+      'Content-Type',  'application/json',
+      'apikey',        'sb_publishable_VOSSpEsqkZtvmXy1DB7_OA_Kq5DeMto',
+      'Authorization', 'Bearer sb_publishable_VOSSpEsqkZtvmXy1DB7_OA_Kq5DeMto'
+    ),
+    body    := jsonb_build_object(
+      'date_start', (now() - interval '1 day')::date::text,
+      'date_stop',  now()::date::text
+    )
+  );
+  $$
+);
