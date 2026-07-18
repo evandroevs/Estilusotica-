@@ -14,8 +14,13 @@ import { BRAND_NAME } from "./lib/brand";
 // carregamento baixa só o necessário (React Flow e Recharts só nas páginas que usam).
 const Dashboard     = lazy(() => import("./pages/Dashboard"));
 const TopCreativos  = lazy(() => import("./pages/TopCreativos"));
+const Conexoes      = lazy(() => import("./pages/Conexoes"));
+const MetaCallback  = lazy(() => import("./pages/MetaCallback"));
+const Login         = lazy(() => import("./pages/Login"));
 const GA4Callback   = lazy(() => import("./pages/GA4Callback"));
 const NotFound      = lazy(() => import("./pages/NotFound"));
+
+const RequireMetaConnection = lazy(() => import("./components/RequireMetaConnection"));
 
 function PageLoader() {
   return (
@@ -28,6 +33,8 @@ function PageLoader() {
 const PAGE_TITLES = {
   "/":               "Dashboard",
   "/top-criativos":  "Top Criativos",
+  "/conexoes":       "Conexões",
+  "/meta/callback":  "Conectando…",
 };
 
 // ─── AppLayout (só renderizado quando autenticado) ─────────────
@@ -63,8 +70,10 @@ function AppLayout() {
         <main className="flex-1 overflow-y-auto p-6" style={{ marginTop: 64 }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/"               element={<Dashboard />}   />
-              <Route path="/top-criativos"  element={<TopCreativos />} />
+              <Route path="/"               element={<RequireMetaConnection><Dashboard /></RequireMetaConnection>}    />
+              <Route path="/top-criativos"  element={<RequireMetaConnection><TopCreativos /></RequireMetaConnection>} />
+              <Route path="/conexoes"       element={<Conexoes />}     />
+              <Route path="/meta/callback"  element={<MetaCallback />} />
               <Route path="*"              element={<NotFound />}     />
             </Routes>
           </Suspense>
@@ -74,11 +83,11 @@ function AppLayout() {
   );
 }
 
-// ─── SessionGate — segura o render até a sessão anônima existir ─
-// Sem isso as primeiras queries disparam sem JWT e o RLS devolve vazio.
+// ─── SessionGate — login obrigatório (SaaS multi-tenant) ────────
+// Sem sessão → tela de Login/Cadastro. As queries só disparam com JWT.
 
 function SessionGate() {
-  const { loading } = useAuth();
+  const { loading, session } = useAuth();
 
   if (loading) {
     return (
@@ -87,6 +96,8 @@ function SessionGate() {
       </div>
     );
   }
+
+  if (!session) return <Login />;
 
   return <AppLayout />;
 }

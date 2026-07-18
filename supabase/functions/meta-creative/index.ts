@@ -1,14 +1,20 @@
 /**
- * meta-creative — Edge Function (Deno)
+ * meta-creative — Edge Function (Deno) — MULTI-TENANT
  *
  * Busca a mídia (thumbnail + vídeo) de um anúncio específico na Meta API
  * e atualiza os campos thumbnail_url, video_id e media_type em meta_ads_cache.
+ * Usa o token da conexão Meta do workspace do usuário autenticado.
  *
  * Body: { ad_id: string }
  * Resposta: { media_type: "image"|"video"|null, url: string|null, thumbnail_url: string|null }
  */
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  resolveMetaConnection,
+  TenantError,
+  jsonResponse,
+  CORS_HEADERS,
+} from "../_shared/tenant.ts";
 import {
   getVideoSource,
   extractVideoId,
@@ -17,13 +23,7 @@ import {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers":
-          "authorization, x-client-info, apikey, content-type",
-      },
-    });
+    return new Response("ok", { headers: CORS_HEADERS });
   }
 
   if (req.method !== "POST") {
@@ -31,13 +31,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const META_TOKEN   = Deno.env.get("META_ACCESS_TOKEN");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!META_TOKEN) {
-      return json({ error: "Secret META_ACCESS_TOKEN não configurado." }, 500);
-    }
+    const ctx = await resolveMetaConnection(req);
+    const META_TOKEN = ctx.accessToken;
+    const supabase   = ctx.admin;
 
     let body: { ad_id?: string; refresh?: boolean } = {};
     try { body = await req.json(); } catch { /* empty body */ }
@@ -47,13 +43,12 @@ Deno.serve(async (req) => {
       return json({ error: "ad_id é obrigatório no body." }, 400);
     }
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-
     // ── 1. O cache já sabe o video_id/tipo? Então NÃO re-busca o creative ────
     // (economiza chamadas e evita rate limit ao abrir vídeos repetidamente).
     const { data: cached } = await supabase
       .from("meta_ads_cache")
       .select("video_id, thumbnail_url, media_type, video_url, video_url_at")
+      .eq("workspace_id", ctx.workspaceId)
       .eq("ad_id", ad_id)
       .maybeSingle();
 
@@ -96,6 +91,7 @@ Deno.serve(async (req) => {
 
       await supabase.from("meta_ads_cache")
         .update({ thumbnail_url: thumbnail_url ?? image_url, video_id, media_type })
+        .eq("workspace_id", ctx.workspaceId)
         .eq("ad_id", ad_id);
     }
 
@@ -110,6 +106,7 @@ Deno.serve(async (req) => {
       if (url) {
         await supabase.from("meta_ads_cache")
           .update({ video_url: url, video_url_at: new Date().toISOString() })
+          .eq("workspace_id", ctx.workspaceId)
           .eq("ad_id", ad_id);
       }
     } else if (thumbnail_url || image_url) {
@@ -119,6 +116,9 @@ Deno.serve(async (req) => {
 
     return json({ media_type, url, thumbnail_url: thumbnail_url ?? image_url, video_error });
   } catch (err) {
+    if (err instanceof TenantError) {
+      return jsonResponse({ error: err.message }, err.status);
+    }
     return json({ error: String(err) }, 500);
   }
 });

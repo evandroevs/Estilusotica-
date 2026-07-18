@@ -1,15 +1,13 @@
 /**
- * meta-sync — Edge Function (Deno)
+ * meta-sync — Edge Function (Deno) — MULTI-TENANT
  *
  * Busca insights de anúncios na Meta Marketing API v21.0, deriva as métricas
- * do glossário do PRD (seção 4) e faz upsert em meta_ads_cache.
+ * do glossário do PRD (seção 4) e faz upsert em meta_ads_cache/meta_ads_daily
+ * do WORKSPACE do usuário autenticado.
  *
- * Secrets necessários (nunca no frontend):
- *   META_ACCESS_TOKEN      — token de acesso do sistema Meta
- *   META_AD_ACCOUNT_ID     — ID numérico da conta (sem "act_")
- *
- * Secrets injetados automaticamente pelo Supabase Edge Runtime:
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * O token e a conta de anúncios vêm da conexão OAuth do workspace
+ * (meta_connections + meta_connection_secrets), criada pela function
+ * meta-oauth — não existem mais secrets globais de token.
  *
  * Body (JSON):
  *   { date_start: "YYYY-MM-DD", date_stop: "YYYY-MM-DD" }
@@ -18,7 +16,12 @@
  *   { synced: number, errors: Array<{ ad_id: string; error: string }> }
  */
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  resolveMetaConnection,
+  TenantError,
+  jsonResponse,
+  CORS_HEADERS,
+} from "../_shared/tenant.ts";
 import {
   CREATIVE_MEDIA_FIELDS,
   extractVideoId,
@@ -56,6 +59,7 @@ interface Product {
   id: string;
   nome: string;
   slug: string;
+  keywords: string[] | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -68,42 +72,35 @@ function actionVal(
 }
 
 /**
- * Infere o funil (TOFU/MOFU/BOFU) pelo nome do anúncio.
- * O gestor pode corrigir em Configurações → Mapeamento Meta.
+ * Infere o funil (TOFU/MOFU/BOFU) pelo nome do anúncio/campanha.
+ * Convenções comuns de nomenclatura de contas de e-commerce BR.
  */
 function inferFunil(adName: string): string {
   const n = adName.toUpperCase();
   if (n.includes("BOFU") || n.includes("BOF")) return "BOFU";
   if (n.includes("MOFU") || n.includes("MOF")) return "MOFU";
   if (n.includes("TOFU") || n.includes("TOF")) return "TOFU";
-  // Palavras comuns nos nomes da Denavita
-  if (n.includes("RETARG") || n.includes("PDP") || n.includes("CHECKOUT")) return "BOFU";
+  if (n.includes("RETARG") || n.includes("RMKT") || n.includes("REMARKETING") ||
+      n.includes("PDP") || n.includes("CHECKOUT")) return "BOFU";
   if (n.includes("ENGAJ") || n.includes("QUALIF")) return "MOFU";
   return "TOFU";
 }
-
-// Mapa de palavras-chave por slug de produto (Denavita)
-const PRODUCT_KEYWORDS: Record<string, string[]> = {
-  "laranja-moro":   ["LARANJA", "MORO", "LM", "LARANJAMORO"],
-  "vinagre-de-maca":["VINAGRE", "MACA", "VMG", "GUMMIES", "GUMMY"],
-  "tons":           ["TONS", " TON ", "-TON-", "_TON_"],
-  "jejoom":         ["JEJOOM", "JEJU", "JEJ"],
-  "digestino":      ["DIGESTINO", "DIGES", "DIG"],
-};
 
 function inferProductId(
   adName: string,
   products: Product[],
 ): string | null {
   const n = adName.toUpperCase();
-  // Siglas curtas (≤3 chars, ex.: "LM") só casam como TOKEN inteiro — antes
-  // "LM" casava como substring ("...fiLMe...") e anúncio de outro produto
-  // caía no Laranja Moro. Em empate, vence a keyword mais longa/específica
-  // (ex.: "TONS" > "LM"), independente da ordem dos produtos no banco.
+  // Keywords vêm da coluna products.keywords do workspace (cada cliente define
+  // as suas). Siglas curtas (≤3 chars) só casam como TOKEN inteiro — substring
+  // geraria falso-positivo ("LM" dentro de "fiLMe"). Em empate, vence a
+  // keyword mais longa/específica, independente da ordem no banco.
   let best: string | null = null;
   let bestLen = 0;
   for (const product of products) {
-    const kws = PRODUCT_KEYWORDS[product.slug] ?? [product.nome.toUpperCase()];
+    const kws = product.keywords?.length
+      ? product.keywords.map((k) => k.toUpperCase())
+      : [product.nome.toUpperCase()];
     for (const kwRaw of kws) {
       const kw = kwRaw.trim();
       if (!kw) continue;
@@ -327,13 +324,7 @@ async function fetchCreativeMap(
 Deno.serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers":
-          "authorization, x-client-info, apikey, content-type",
-      },
-    });
+    return new Response("ok", { headers: CORS_HEADERS });
   }
 
   if (req.method !== "POST") {
@@ -341,18 +332,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── 1. Secrets / env ──
-    const META_TOKEN     = Deno.env.get("META_ACCESS_TOKEN");
-    const META_ACCOUNT   = Deno.env.get("META_AD_ACCOUNT_ID");
-    const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
-    const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!META_TOKEN || !META_ACCOUNT) {
-      return json(
-        { error: "Secrets META_ACCESS_TOKEN e META_AD_ACCOUNT_ID são obrigatórios." },
-        500,
-      );
-    }
+    // ── 1. Workspace + conexão Meta do usuário autenticado ──
+    const ctx = await resolveMetaConnection(req);
+    const META_TOKEN   = ctx.accessToken;
+    const META_ACCOUNT = ctx.accountId;
+    const WORKSPACE    = ctx.workspaceId;
+    const supabase     = ctx.admin;
 
     // ── 2. Parse do body ──
     let body: { date_start?: string; date_stop?: string } = {};
@@ -409,12 +394,11 @@ Deno.serve(async (req) => {
     const { map: creativeMap, error: creativeErr } =
       await fetchCreativeMap(META_ACCOUNT, META_TOKEN, date_start, date_stop);
 
-    // ── 5. Carregar produtos para inferência de product_id ──
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-
+    // ── 5. Carregar produtos do workspace para inferência de product_id ──
     const { data: products, error: prodErr } = await supabase
       .from("products")
-      .select("id, nome, slug")
+      .select("id, nome, slug, keywords")
+      .eq("workspace_id", WORKSPACE)
       .eq("ativo", true);
 
     if (prodErr) {
@@ -452,6 +436,7 @@ Deno.serve(async (req) => {
         const day        = insight.date_start; // == date_stop com time_increment=1
 
         dailyRecords.push({
+          workspace_id:       WORKSPACE,
           ad_id:              insight.ad_id,
           date:               day,
           campaign_id:        insight.campaign_id,
@@ -498,7 +483,7 @@ Deno.serve(async (req) => {
       const chunk = dailyRecords.slice(i, i + CHUNK);
       const { error: dErr } = await supabase
         .from("meta_ads_daily")
-        .upsert(chunk, { onConflict: "ad_id,date" });
+        .upsert(chunk, { onConflict: "workspace_id,ad_id,date" });
       if (dErr) errors.push({ ad_id: `daily[${i}]`, error: dErr.message });
     }
 
@@ -514,6 +499,7 @@ Deno.serve(async (req) => {
     for (const [ad_id, acc] of perAd) {
       const m    = snapshotMetrics(acc.counters);
       const base = {
+        workspace_id:       WORKSPACE,
         ad_id,
         ad_name:            acc.ad_name,
         campaign_id:        acc.campaign_id,
@@ -557,7 +543,7 @@ Deno.serve(async (req) => {
         const chunk = records.slice(i, i + CHUNK);
         const { error: cErr } = await supabase
           .from("meta_ads_cache")
-          .upsert(chunk, { onConflict: "ad_id" });
+          .upsert(chunk, { onConflict: "workspace_id,ad_id" });
         if (cErr) errors.push({ ad_id: `cache[${i}]`, error: cErr.message });
         else synced += chunk.length;
       }
@@ -579,6 +565,7 @@ Deno.serve(async (req) => {
         if (data.error) throw new Error(data.error.message);
         for (const c of data.data ?? []) {
           camps.push({
+            workspace_id:     WORKSPACE,
             campaign_id:      c.id,
             campaign_name:    c.name,
             effective_status: c.effective_status ?? null,
@@ -590,7 +577,7 @@ Deno.serve(async (req) => {
       if (camps.length) {
         const { error: campErr } = await supabase
           .from("meta_campaigns")
-          .upsert(camps, { onConflict: "campaign_id" });
+          .upsert(camps, { onConflict: "workspace_id,campaign_id" });
         if (campErr) errors.push({ ad_id: "campaigns", error: campErr.message });
       }
     } catch (err) {
@@ -599,6 +586,9 @@ Deno.serve(async (req) => {
 
     return json({ synced, days: dailyRecords.length, errors });
   } catch (err) {
+    if (err instanceof TenantError) {
+      return jsonResponse({ error: err.message }, err.status);
+    }
     return json({ error: String(err) }, 500);
   }
 });

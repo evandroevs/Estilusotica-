@@ -14,16 +14,8 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined);
 
   useEffect(() => {
-    // Sem tela de login: se não há sessão salva, cria uma sessão anônima
-    // (anonymous sign-in habilitado no projeto). A sessão fica no localStorage.
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) console.error("Falha no login anônimo:", error.message);
-        setSession(data?.session ?? null);
-        return;
-      }
-      setSession(session);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session ?? null);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -32,6 +24,20 @@ export function AuthProvider({ children }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  function signIn(email, password) {
+    return supabase.auth.signInWithPassword({ email, password });
+  }
+
+  // workspace_name vai no user_metadata — o trigger handle_new_user usa
+  // para nomear o workspace criado automaticamente no signup.
+  function signUp(email, password, workspaceName) {
+    return supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { workspace_name: workspaceName || "" } },
+    });
+  }
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -43,6 +49,8 @@ export function AuthProvider({ children }) {
         user:    session?.user ?? null,
         session: session ?? null,
         loading: session === undefined,
+        signIn,
+        signUp,
         signOut,
       }}
     >

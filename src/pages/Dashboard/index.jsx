@@ -707,7 +707,8 @@ export default function Dashboard() {
       <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
         {[
           { key: "geral",     label: "Visão Geral", Icon: BarChart2 },
-          { key: "ga4",       label: "GA4",         Icon: BarChart3 },
+          // GA4 fica oculto no SaaS v1 (só Meta Ads) — volta quando o OAuth
+          // Google por workspace for portado: { key: "ga4", label: "GA4", Icon: BarChart3 },
           { key: "relatorio", label: "Relatório",   Icon: FileText  },
         ].map(({ key, label, Icon }) => (
           <button
