@@ -3,32 +3,33 @@
 O que precisa existir para o SaaS funcionar de ponta a ponta:
 login → conectar Meta Ads do cliente → dashboard com as métricas dele.
 
-## 1. Projeto Supabase (backend)
+## 1. Projeto Supabase (backend) — ✅ FEITO (2026-07-18)
 
-> ⚠️ **Bloqueio atual**: a criação de projetos está travada por faturas
-> vencidas na organização "lucascaricatti-del's Org". Regularize em
-> Dashboard → Organization → Invoices e rode o passo abaixo.
+Projeto: **`zkdeczpqvybswawrxaxk`** (conta nova do Evandro, plano free,
+us-west-2) — `https://zkdeczpqvybswawrxaxk.supabase.co`.
 
+Já aplicado/deployado:
+- Schema multi-tenant (`0001_saas_multi_tenant.sql`) via Management API
+- Edge Functions `meta-oauth`, `meta-sync`, `meta-creative`
+- Auth: confirmação de e-mail **desligada** (facilita testes — religar
+  antes de vender: Management API `mailer_autoconfirm: false`),
+  anonymous sign-in desligado
+- `.env.local` aponta para o projeto novo (`VITE_SUPABASE_URL` +
+  `VITE_SUPABASE_ANON_KEY` + `SUPABASE_ACCESS_TOKEN` da conta nova)
+
+Signup testado ao vivo: cria usuário + workspace automaticamente
+(trigger `handle_new_user`).
+
+> Free tier: projeto pausa após ~1 semana sem uso (Restore no dashboard).
+> Para produção: upgrade Pro no projeto.
+
+Para futuras mudanças de schema:
 ```bash
-# cria o projeto (org EVANDRO) — a senha do banco já está em .env.local
-supabase projects create estilusotica-saas \
-  --org-id xkezjdsiblzomiienryq --region sa-east-1 \
-  --db-password "$SUPABASE_DB_PASSWORD"
-
-# linka o repo e aplica o schema multi-tenant
-supabase link --project-ref <REF-DO-PROJETO-NOVO>
-supabase db push
-
-# deploya as functions multi-tenant
-supabase functions deploy meta-oauth meta-sync meta-creative
+# rodar SQL novo no projeto (sem senha do banco, via Management API)
+# ou: supabase link --project-ref zkdeczpqvybswawrxaxk && supabase db push
+supabase functions deploy meta-oauth meta-sync meta-creative \
+  --project-ref zkdeczpqvybswawrxaxk --use-api
 ```
-
-Depois copie de **Settings → API** para o `.env.local`:
-`VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (sb_publishable_...).
-
-Em **Authentication → Providers → Email**: decidir se exige confirmação
-de e-mail (a tela de login já trata os dois casos). Anonymous sign-in
-fica **desligado** (padrão) — o SaaS usa login real.
 
 ## 2. App da Meta (developers.facebook.com)
 
