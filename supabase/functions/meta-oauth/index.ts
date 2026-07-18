@@ -123,7 +123,9 @@ Deno.serve(async (req) => {
         next = data.paging?.next ?? null;
       }
 
-      // 4. Upsert conexão do workspace + token (secrets: só service_role lê)
+      // 4. Upsert conexão do workspace + token (secrets: só service_role lê).
+      // account_id anterior é PRESERVADO — select_account compara com o novo
+      // para decidir se limpa os dados sincronizados da conta antiga.
       const nowIso = new Date().toISOString();
       const { data: conn, error: connErr } = await ctx.admin
         .from("meta_connections")
@@ -132,8 +134,6 @@ Deno.serve(async (req) => {
           fb_user_id:   me.id,
           fb_user_name: me.name,
           status:       "pending_account",
-          account_id:   null,
-          account_name: null,
           last_error:   null,
           connected_by: ctx.userId,
           updated_at:   nowIso,
@@ -216,6 +216,25 @@ Deno.serve(async (req) => {
       if (!body.account_id) {
         return jsonResponse({ error: "account_id é obrigatório." }, 400);
       }
+
+      // Trocou de conta de anúncios? Limpa as métricas da conta anterior —
+      // sem isso os anúncios das duas contas se misturam no dashboard.
+      const { data: prev } = await ctx.admin
+        .from("meta_connections")
+        .select("account_id")
+        .eq("workspace_id", ctx.workspaceId)
+        .maybeSingle();
+
+      if (prev?.account_id && prev.account_id !== body.account_id) {
+        for (const table of ["meta_ads_daily", "meta_ads_cache", "meta_campaigns", "meta_ads_segments"]) {
+          const { error: delErr } = await ctx.admin
+            .from(table)
+            .delete()
+            .eq("workspace_id", ctx.workspaceId);
+          if (delErr) throw new Error(`Falha ao limpar ${table}: ${delErr.message}`);
+        }
+      }
+
       const { error } = await ctx.admin
         .from("meta_connections")
         .update({

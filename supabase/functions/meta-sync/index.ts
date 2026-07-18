@@ -42,6 +42,7 @@ interface MetaInsight {
   campaign_name: string;
   spend: string;
   impressions: string;
+  reach?: string;
   clicks: string;
   inline_link_clicks: string;
   inline_link_click_ctr: string;
@@ -128,6 +129,8 @@ interface Counters {
   video_views_3s: number;
   initiate_checkout: number;
   add_payment_info: number;
+  messages: number;
+  reach: number;
 }
 
 /** Extrai os contadores aditivos de um insight diário. */
@@ -154,6 +157,11 @@ function deriveCounters(insight: MetaInsight): Counters {
   const addPayment       = actionVal(insight.actions, "add_payment_info") ||
                            actionVal(insight.actions, "omni_add_payment_info");
 
+  // Negócio local: conversas iniciadas por mensagem (WhatsApp/Messenger/Direct)
+  const messages = actionVal(insight.actions, "onsite_conversion.messaging_conversation_started_7d") ||
+                   actionVal(insight.actions, "onsite_conversion.total_messaging_connection");
+  const reach    = parseInt(insight.reach ?? "0", 10) || 0;
+
   return {
     spend,
     revenue,
@@ -165,6 +173,8 @@ function deriveCounters(insight: MetaInsight): Counters {
     video_views_3s:     views3s,
     initiate_checkout:  Math.round(initiateCheckout),
     add_payment_info:   Math.round(addPayment),
+    messages:           Math.round(messages),
+    reach,
   };
 }
 
@@ -180,13 +190,15 @@ function addCounters(a: Counters, b: Counters): void {
   a.video_views_3s     += b.video_views_3s;
   a.initiate_checkout  += b.initiate_checkout;
   a.add_payment_info   += b.add_payment_info;
+  a.messages           += b.messages;
+  a.reach              += b.reach;
 }
 
 function emptyCounters(): Counters {
   return {
     spend: 0, revenue: 0, purchases: 0, impressions: 0, clicks: 0,
     link_clicks: 0, landing_page_views: 0, video_views_3s: 0,
-    initiate_checkout: 0, add_payment_info: 0,
+    initiate_checkout: 0, add_payment_info: 0, messages: 0, reach: 0,
   };
 }
 
@@ -364,6 +376,7 @@ Deno.serve(async (req) => {
       "campaign_name",
       "spend",
       "impressions",
+      "reach",
       "clicks",
       "inline_link_clicks",
       "inline_link_click_ctr",
@@ -452,6 +465,8 @@ Deno.serve(async (req) => {
           video_views_3s:     counters.video_views_3s,
           initiate_checkout:  counters.initiate_checkout,
           add_payment_info:   counters.add_payment_info,
+          messages:           counters.messages,
+          reach:              counters.reach,
           synced_at:          nowIso,
         });
 

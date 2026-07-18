@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign, TrendingUp, ShoppingCart, BarChart2, BarChart3,
   MousePointer, ArrowRight, Users, Play, RefreshCw, Eye, FileText,
+  MessageCircle,
 } from "lucide-react";
 import GA4 from "./GA4";
 import Relatorio from "./Relatorio";
@@ -55,9 +56,15 @@ function agg(rows) {
   const lpv           = rows.reduce((s, r) => s + +r.landing_page_views|| 0, 0);
   const initCheckout  = rows.reduce((s, r) => s + (+r.initiate_checkout || 0), 0);
   const addPayment    = rows.reduce((s, r) => s + (+r.add_payment_info  || 0), 0);
+  const messages      = rows.reduce((s, r) => s + (+r.messages          || 0), 0);
+  // Soma de alcances diários — aproximação (superestima o alcance único)
+  const reach         = rows.reduce((s, r) => s + (+r.reach             || 0), 0);
 
   return {
     spend, revenue, purchases, impr, clicks, lpv, initCheckout, addPayment,
+    messages, reach,
+    custoPorMensagem: messages > 0 ? spend / messages : 0,
+    frequencia:       reach    > 0 ? impr  / reach    : 0,
     roas:           spend     > 0 ? revenue   / spend    : 0,
     cpa:            purchases > 0 ? spend     / purchases: 0,
     cpm:            impr      > 0 ? (spend / impr) * 1000 : 0,
@@ -548,6 +555,8 @@ function makeNameRegex(term) {
 
 export default function Dashboard() {
   const [view,       setView]       = useState("geral"); // geral | ga4
+  // Formato dos KPIs: "ecommerce" (loja online) | "local" (negócio local/WhatsApp)
+  const [dashFormat, setDashFormat] = useState(() => localStorage.getItem("dash-format") || "ecommerce");
   const [period,     setPeriod]     = useState("7d");
   const [custom,     setCustom]     = useState(defaultCustom());
   const [category,   setCategory]   = useState("");      // "" | produto | macro | micro | ugc
@@ -703,26 +712,53 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
 
-      {/* ── Sub-abas: Visão Geral | GA4 ──────────────────────────────────── */}
-      <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
-        {[
-          { key: "geral",     label: "Visão Geral", Icon: BarChart2 },
-          // GA4 fica oculto no SaaS v1 (só Meta Ads) — volta quando o OAuth
-          // Google por workspace for portado: { key: "ga4", label: "GA4", Icon: BarChart3 },
-          { key: "relatorio", label: "Relatório",   Icon: FileText  },
-        ].map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setView(key)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
-              view === key ? "bg-accent text-black shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
-            }`}
-          >
-            <Icon size={13} />
-            {label}
-          </button>
-        ))}
+      {/* ── Sub-abas: Visão Geral | Relatório + seletor de formato ───────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
+          {[
+            { key: "geral",     label: "Visão Geral", Icon: BarChart2 },
+            // GA4 fica oculto no SaaS v1 (só Meta Ads) — volta quando o OAuth
+            // Google por workspace for portado: { key: "ga4", label: "GA4", Icon: BarChart3 },
+            { key: "relatorio", label: "Relatório",   Icon: FileText  },
+          ].map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setView(key)}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                view === key ? "bg-accent text-black shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+              }`}
+            >
+              <Icon size={13} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Formato dos KPIs: e-commerce (loja online) × negócio local (mensagens) */}
+        {view === "geral" && (
+          <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
+            {[
+              { key: "ecommerce", label: "E-commerce",    Icon: ShoppingCart  },
+              { key: "local",     label: "Tráfego Local", Icon: MessageCircle },
+            ].map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                type="button"
+                title={key === "local"
+                  ? "KPIs para negócio local: mensagens, custo por mensagem, alcance e frequência"
+                  : "KPIs para loja online: receita, ROAS, CPA e taxa de conversão"}
+                onClick={() => { setDashFormat(key); localStorage.setItem("dash-format", key); }}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                  dashFormat === key ? "bg-accent text-black shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
+                }`}
+              >
+                <Icon size={13} />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {view === "ga4" && <GA4 />}
@@ -797,10 +833,19 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ── KPI Linha 1: Investimento, Receita, ROAS, CPA, Compras, CPM ─── */}
+      {/* ── KPI Linha 1 ──────────────────────────────────────────────────── */}
       {loading ? (
         <div className="grid grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : dashFormat === "local" ? (
+        <div className="grid grid-cols-6 gap-4">
+          <KpiCard title="Investimento"       value={m?.spend}            prevValue={mPrev?.spend}            fmt={BRL} icon={DollarSign}    color="#60A5FA" />
+          <KpiCard title="Mensagens"          value={m?.messages}         prevValue={mPrev?.messages}         fmt={NUM} icon={MessageCircle} color="#C8FF00" />
+          <KpiCard title="Custo por Mensagem" value={m?.custoPorMensagem} prevValue={mPrev?.custoPorMensagem} fmt={BRL} icon={MessageCircle} color="#F87171" invertColor />
+          <KpiCard title="Alcance"            value={m?.reach}            prevValue={mPrev?.reach}            fmt={NUM} icon={Users}         color="#38BDF8" />
+          <KpiCard title="Compras"            value={m?.purchases}        prevValue={mPrev?.purchases}        fmt={NUM} icon={ShoppingCart}  color="#A78BFA" />
+          <KpiCard title="Total de Vendas"    value={m?.revenue}          prevValue={mPrev?.revenue}          fmt={BRL} icon={TrendingUp}    color="#4ADE80" />
         </div>
       ) : (
         <div className="grid grid-cols-6 gap-4">
@@ -813,10 +858,18 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── KPI Linha 2: Taxa Conv., Ticket Médio, Connect Rate, CPC ───── */}
+      {/* ── KPI Linha 2 ──────────────────────────────────────────────────── */}
       {loading ? (
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : dashFormat === "local" ? (
+        <div className="grid grid-cols-5 gap-4">
+          <KpiCard title="ROAS"       value={m?.roas}       prevValue={mPrev?.roas}       fmt={ROAS}          icon={BarChart2}    color="#C8FF00" />
+          <KpiCard title="CPA"        value={m?.cpa}        prevValue={mPrev?.cpa}        fmt={BRL}           icon={MousePointer} color="#F87171" invertColor />
+          <KpiCard title="CPM"        value={m?.cpm}        prevValue={mPrev?.cpm}        fmt={BRL}           icon={Users}        color="#FB923C" invertColor />
+          <KpiCard title="CTR"        value={m?.ctr}        prevValue={mPrev?.ctr}        fmt={(v) => PCT(v)} icon={TrendingUp}   color="#4ADE80" />
+          <KpiCard title="Frequência" value={m?.frequencia} prevValue={mPrev?.frequencia} fmt={ROAS}          icon={Eye}          color="#C084FC" invertColor />
         </div>
       ) : (
         <div className="grid grid-cols-5 gap-4">
