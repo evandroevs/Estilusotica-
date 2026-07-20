@@ -85,6 +85,11 @@ function AppLayout() {
 
 // ─── SessionGate — login obrigatório (SaaS multi-tenant) ────────
 // Sem sessão → tela de Login/Cadastro. As queries só disparam com JWT.
+//
+// ⚠️ TEMPORÁRIO: VITE_BYPASS_AUTH=1 (.env.local) pula a tela de login e
+// abre o painel sem sessão — as queries sob RLS voltam vazias. Usar só em
+// dev local; remover a flag para o login voltar a ser obrigatório.
+const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === "1";
 
 function SessionGate() {
   const { loading, session } = useAuth();
@@ -97,7 +102,7 @@ function SessionGate() {
     );
   }
 
-  if (!session) return <Login />;
+  if (!session && !BYPASS_AUTH) return <Login />;
 
   return <AppLayout />;
 }
