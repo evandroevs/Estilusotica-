@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { queryClient } from "../lib/queryClient";
 
 const AuthContext = createContext(null);
 
@@ -34,8 +35,16 @@ export function AuthProvider({ children }) {
       setSession(session ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Quando o token muda (login automático, renovação de token expirado,
+    // logout), tudo que já foi buscado com o token anterior está furado —
+    // inclusive respostas vazias que o RLS devolveu por falta de sessão
+    // válida. Sem este refetch, a lista de lojas fica presa em vazia e o
+    // seletor não aparece.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session ?? null);
+      if (["SIGNED_IN", "TOKEN_REFRESHED", "SIGNED_OUT"].includes(event)) {
+        queryClient.invalidateQueries();
+      }
     });
 
     return () => subscription.unsubscribe();
