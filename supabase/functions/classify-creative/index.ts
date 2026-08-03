@@ -36,7 +36,7 @@ import { getVideoSource } from "../_shared/metaVideo.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-workspace-id",
 };
 
 // ─── System prompt (framework ADSUP / Ecommerce Rocket) ────────────────────────

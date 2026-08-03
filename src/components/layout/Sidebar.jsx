@@ -3,6 +3,7 @@ import {
   Target, LayoutDashboard, ChevronsLeft, ChevronsRight, Trophy, Plug,
 } from "lucide-react";
 import { BRAND_NAME } from "../../lib/brand";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
 const NAV_ITEMS = [
   { to: "/",               Icon: LayoutDashboard, label: "Dashboard"      },
@@ -31,6 +32,9 @@ export default function Sidebar({ collapsed, onToggle }) {
           </span>
         )}
       </div>
+
+      {/* Seletor de loja — colado no logo */}
+      <WorkspaceSwitcher collapsed={collapsed} />
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden">

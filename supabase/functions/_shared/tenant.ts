@@ -45,6 +45,23 @@ export async function resolveTenant(req: Request): Promise<TenantContext> {
 
   const userId = userData.user.id;
 
+  // Loja escolhida no seletor do topo. Só vale se o usuário for membro
+  // dela — senão cai no fallback (primeira loja), igual ao SQL de
+  // current_workspace_id().
+  const pedido = req.headers.get("x-workspace-id")?.trim();
+
+  if (pedido) {
+    const { data: escolhido, error: escolhidoErr } = await admin
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", userId)
+      .eq("workspace_id", pedido)
+      .maybeSingle();
+
+    if (escolhidoErr) throw new TenantError(escolhidoErr.message, 500);
+    if (escolhido) return { admin, userId, workspaceId: escolhido.workspace_id };
+  }
+
   const { data: member, error: memberErr } = await admin
     .from("workspace_members")
     .select("workspace_id")
@@ -103,7 +120,7 @@ export async function resolveMetaConnection(req: Request): Promise<MetaConnectio
 
 export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-workspace-id",
 };
 
 export function jsonResponse(body: unknown, status = 200): Response {

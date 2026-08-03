@@ -27,7 +27,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-workspace-id",
 };
 
 const DEFAULT_BATCH = 4;   // vídeos levam ~1-2 min cada; 4 cabem no limite da função

@@ -21,7 +21,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-workspace-id",
 };
 
 const UPDATE_CHUNK = 200; // ad_ids por UPDATE (limite prático do PostgREST .in)

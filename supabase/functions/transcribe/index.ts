@@ -36,7 +36,7 @@ import { getVideoSource } from "../_shared/metaVideo.ts";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-workspace-id",
 };
 
 const GEMINI_MODEL        = "gemini-2.0-flash";

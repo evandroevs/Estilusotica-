@@ -9,12 +9,28 @@ export function useAuth() {
   return ctx;
 }
 
+// Plataforma aberta: com estas envs definidas o app entra sozinho numa conta
+// fixa, sem mostrar tela de login. É o que dá workspace (e portanto dados) a
+// quem abre o link. Sem elas, o painel abre sem sessão e o RLS não devolve
+// nada. ⚠️ Quem tiver o link tem os dados dessa conta.
+const AUTO_EMAIL = import.meta.env.VITE_AUTO_LOGIN_EMAIL;
+const AUTO_SENHA = import.meta.env.VITE_AUTO_LOGIN_PASSWORD;
+
 export function AuthProvider({ children }) {
   // undefined = loading | null = signed out | object = signed in
   const [session, setSession] = useState(undefined);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session && AUTO_EMAIL && AUTO_SENHA) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email:    AUTO_EMAIL,
+          password: AUTO_SENHA,
+        });
+        if (error) console.error("Auto-login falhou:", error.message);
+        setSession(data?.session ?? null);
+        return;
+      }
       setSession(session ?? null);
     });
 

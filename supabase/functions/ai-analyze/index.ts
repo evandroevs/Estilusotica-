@@ -23,7 +23,7 @@ import { callLLM } from "../_shared/llm.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-workspace-id",
 };
 
 // ─── System prompts por modo ──────────────────────────────────────────────────
