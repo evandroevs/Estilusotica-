@@ -83,13 +83,14 @@ function AppLayout() {
   );
 }
 
-// ─── SessionGate — login obrigatório (SaaS multi-tenant) ────────
-// Sem sessão → tela de Login/Cadastro. As queries só disparam com JWT.
+// ─── SessionGate — plataforma aberta por padrão ─────────────────
+// Hoje o painel abre sem login. Com sessão, as queries rodam sob RLS do
+// workspace do usuário; sem sessão, elas voltam o que o RLS liberar para
+// o anon.
 //
-// ⚠️ TEMPORÁRIO: VITE_BYPASS_AUTH=1 (.env.local) pula a tela de login e
-// abre o painel sem sessão — as queries sob RLS voltam vazias. Usar só em
-// dev local; remover a flag para o login voltar a ser obrigatório.
-const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === "1";
+// Para reativar o login obrigatório (SaaS multi-tenant), basta definir
+// VITE_REQUIRE_AUTH=1 no .env.local e nas envs da Vercel.
+const REQUIRE_AUTH = import.meta.env.VITE_REQUIRE_AUTH === "1";
 
 function SessionGate() {
   const { loading, session } = useAuth();
@@ -102,7 +103,7 @@ function SessionGate() {
     );
   }
 
-  if (!session && !BYPASS_AUTH) return <Login />;
+  if (!session && REQUIRE_AUTH) return <Login />;
 
   return <AppLayout />;
 }

@@ -43,15 +43,18 @@ export default function TopBar({ title, sidebarWidth = 240 }) {
           </span>
         )}
 
-        <button
-          type="button"
-          onClick={signOut}
-          title="Sair"
-          aria-label="Sair da conta"
-          className="hover-chrome flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-white transition-colors"
-        >
-          <LogOut size={15} />
-        </button>
+        {/* Sem sessão (plataforma aberta) não há o que deslogar */}
+        {user && (
+          <button
+            type="button"
+            onClick={signOut}
+            title="Sair"
+            aria-label="Sair da conta"
+            className="hover-chrome flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-white transition-colors"
+          >
+            <LogOut size={15} />
+          </button>
+        )}
       </div>
     </header>
   );
