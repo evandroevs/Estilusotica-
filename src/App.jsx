@@ -70,7 +70,7 @@ function AppLayout() {
         <main className="flex-1 overflow-y-auto p-6" style={{ marginTop: 64 }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/"               element={<RequireMetaConnection><Dashboard /></RequireMetaConnection>}    />
+              <Route path="/"               element={<Dashboard />}    />
               <Route path="/top-criativos"  element={<RequireMetaConnection><TopCreativos /></RequireMetaConnection>} />
               <Route path="/conexoes"       element={<Conexoes />}     />
               <Route path="/meta/callback"  element={<MetaCallback />} />

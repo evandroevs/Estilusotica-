@@ -4,10 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign, TrendingUp, ShoppingCart, BarChart2, BarChart3,
   MousePointer, ArrowRight, Users, Play, RefreshCw, Eye, FileText,
-  MessageCircle,
+  MessageCircle, Megaphone,
 } from "lucide-react";
 import GA4 from "./GA4";
-import Relatorio from "./Relatorio";
+import GoogleAds from "./GoogleAds";
+import Relatorios from "./Relatorios";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
@@ -17,6 +18,8 @@ import { usePeriodAds } from "../../hooks/usePeriodAds";
 import { PeriodFilter } from "../../components/ui/PeriodFilter";
 import { getPrevDates, defaultCustom, getPeriodDates } from "../../lib/periods";
 import CreativeModal from "../../components/CreativeModal";
+import RequireMetaConnection from "../../components/RequireMetaConnection";
+import { useMetaConnection } from "../../hooks/useMetaConnection";
 
 /* ─── Formatters ─────────────────────────────────────────────────────────── */
 
@@ -555,6 +558,10 @@ function makeNameRegex(term) {
 
 export default function Dashboard() {
   const [view,       setView]       = useState("geral"); // geral | ga4
+
+  // Conexão Meta ativa? (as abas Google/Relatórios funcionam sem ela)
+  const { data: metaConn } = useMetaConnection();
+  const metaOk = metaConn?.status === "active";
   // Formato dos KPIs: "ecommerce" (loja online) | "local" (negócio local/WhatsApp)
   const [dashFormat, setDashFormat] = useState(() => localStorage.getItem("dash-format") || "ecommerce");
   const [period,     setPeriod]     = useState("7d");
@@ -600,7 +607,7 @@ export default function Dashboard() {
   // Current period ads (com auto-pull)
   const {
     rows: curRows, loading: curLoading, syncing, range,
-  } = usePeriodAds({ period: dPeriod, custom: dCustom, productId: rpcProductId });
+  } = usePeriodAds({ period: dPeriod, custom: dCustom, productId: rpcProductId, enabled: metaOk });
 
   // Aplica o filtro por nomenclatura (no-op quando não há termo).
   const matchesName = useMemo(() => {
@@ -716,10 +723,11 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
           {[
-            { key: "geral",     label: "Visão Geral", Icon: BarChart2 },
-            // GA4 fica oculto no SaaS v1 (só Meta Ads) — volta quando o OAuth
+            { key: "geral",     label: "Meta Ads",   Icon: BarChart2 },
+            { key: "gads",      label: "Google",     Icon: Megaphone },
+            // GA4 fica oculto no SaaS v1 — volta quando o OAuth
             // Google por workspace for portado: { key: "ga4", label: "GA4", Icon: BarChart3 },
-            { key: "relatorio", label: "Relatório",   Icon: FileText  },
+            { key: "relatorio", label: "Relatórios", Icon: FileText  },
           ].map(({ key, label, Icon }) => (
             <button
               key={key}
@@ -762,9 +770,11 @@ export default function Dashboard() {
       </div>
 
       {view === "ga4" && <GA4 />}
-      {view === "relatorio" && <Relatorio />}
+      {view === "gads" && <GoogleAds />}
+      {view === "relatorio" && <Relatorios />}
 
       {view === "geral" && (
+      <RequireMetaConnection>
       <>
       {/* ── Filtros ──────────────────────────────────────────────────────── */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 px-5 py-4 flex flex-wrap items-center gap-4">
@@ -953,6 +963,7 @@ export default function Dashboard() {
         </div>
       )}
       </>
+      </RequireMetaConnection>
       )}
     </div>
   );
