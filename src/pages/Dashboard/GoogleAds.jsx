@@ -14,26 +14,12 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import { supabase } from "../../lib/supabase";
-
-const RANGES = [
-  { v: 7,  label: "7 dias" },
-  { v: 28, label: "28 dias" },
-  { v: 90, label: "90 dias" },
-];
+import { PeriodFilter } from "../../components/ui/PeriodFilter";
+import { getPeriodDates, getPrevDates, defaultCustom } from "../../lib/periods";
 
 const NUM = (v) => (v == null || isNaN(v) ? "—" : new Intl.NumberFormat("pt-BR").format(Math.round(v)));
 const BRL = (v) => (v == null || isNaN(v) ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 }).format(v));
 const PCT = (v) => (v == null || isNaN(v) ? "—" : v.toFixed(2).replace(".", ",") + "%");
-
-function dateStr(d) {
-  const p = (x) => String(x).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return dateStr(d);
-}
 
 /** Agrega linhas diárias em totais + métricas derivadas. */
 function agg(rows) {
@@ -86,19 +72,22 @@ function Kpi({ icon: Icon, label, value, deltaValue, invertColor = false, color 
 }
 
 export default function GoogleAds() {
-  const [range, setRange] = useState(28);
+  const [period, setPeriod] = useState("30d");
+  const [custom, setCustom] = useState(defaultCustom);
+  const [linhas, setLinhas] = useState({ custo: true, conversoes: true });
 
   // Janela atual + anterior de uma vez (para os deltas); RLS filtra a loja.
-  const fetchStart = daysAgo(range * 2);
-  const curStart = daysAgo(range - 1);
+  const { s: curStart, e: curEnd } = getPeriodDates(period, custom);
+  const { s: prevStart } = getPrevDates(period, custom);
 
   const { data: rows, isLoading, error } = useQuery({
-    queryKey: ["google-ads", range],
+    queryKey: ["google-ads", curStart, curEnd],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("google_ads_cache")
         .select("*")
-        .gte("date", fetchStart)
+        .gte("date", prevStart)
+        .lte("date", curEnd)
         .order("date", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -108,7 +97,7 @@ export default function GoogleAds() {
 
   const { cur, prev, series, campaigns, syncedAt } = useMemo(() => {
     const all = rows ?? [];
-    const curRows = all.filter((r) => r.date >= curStart);
+    const curRows = all.filter((r) => r.date >= curStart && r.date <= curEnd);
     const prevRows = all.filter((r) => r.date < curStart);
 
     const byDate = new Map();
@@ -142,20 +131,15 @@ export default function GoogleAds() {
       : null;
 
     return { cur: agg(curRows), prev: agg(prevRows), series, campaigns, syncedAt };
-  }, [rows, curStart]);
+  }, [rows, curStart, curEnd]);
 
   return (
     <div className="space-y-5">
       {/* Período */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 px-5 py-3.5 flex items-center gap-3 flex-wrap">
-        <span className="text-xs text-gray-500">Google Ads da loja ativa</span>
-        <div className="ml-auto flex items-center gap-1">
-          {RANGES.map((r) => (
-            <button key={r.v} type="button" onClick={() => setRange(r.v)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${range === r.v ? "bg-accent text-black" : "bg-gray-800 text-gray-400 hover:text-gray-200"}`}>
-              {r.label}
-            </button>
-          ))}
+        <span className="text-xs text-gray-500 whitespace-nowrap">Google Ads da loja ativa</span>
+        <div className="ml-auto">
+          <PeriodFilter period={period} custom={custom} onPeriodChange={setPeriod} onCustomChange={setCustom} />
         </div>
       </div>
 
@@ -186,7 +170,25 @@ export default function GoogleAds() {
 
           {/* Série diária */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
-            <h3 className="text-sm font-bold text-white mb-3">Custo e conversões por dia</h3>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <h3 className="text-sm font-bold text-white">Custo e conversões por dia</h3>
+              <div className="flex items-center gap-1">
+                {[
+                  { key: "custo",      label: "Custo",      cor: "#C8FF00" },
+                  { key: "conversoes", label: "Conversões", cor: "#4ADE80" },
+                ].map(({ key, label, cor }) => (
+                  <button key={key} type="button"
+                    onClick={() => setLinhas((l) => ({ ...l, [key]: !l[key] }))}
+                    title={linhas[key] ? `Ocultar ${label}` : `Mostrar ${label}`}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                      linhas[key] ? "bg-gray-700 text-white" : "bg-gray-800 text-gray-500 line-through"
+                    }`}>
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: linhas[key] ? cor : "#55555E" }} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ResponsiveContainer width="100%" height={230}>
               <LineChart data={series} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
                 <CartesianGrid stroke="#34343C" strokeDasharray="3 3" vertical={false} />
@@ -199,8 +201,8 @@ export default function GoogleAds() {
                   formatter={(v, name) => (name === "Custo" ? BRL(v) : NUM(v))}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} formatter={(value) => <span style={{ color: "#A3A3AE" }}>{value}</span>} />
-                <Line yAxisId="custo" type="monotone" dataKey="custo" name="Custo" stroke="#C8FF00" strokeWidth={2} dot={false} />
-                <Line yAxisId="conv" type="monotone" dataKey="conversoes" name="Conversões" stroke="#4ADE80" strokeWidth={2} dot={false} />
+                {linhas.custo && <Line yAxisId="custo" type="monotone" dataKey="custo" name="Custo" stroke="#C8FF00" strokeWidth={2} dot={false} />}
+                {linhas.conversoes && <Line yAxisId="conv" type="monotone" dataKey="conversoes" name="Conversões" stroke="#4ADE80" strokeWidth={2} dot={false} />}
               </LineChart>
             </ResponsiveContainer>
           </div>
