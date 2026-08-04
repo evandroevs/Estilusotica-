@@ -15,6 +15,7 @@ import { BRAND_NAME } from "./lib/brand";
 const Dashboard     = lazy(() => import("./pages/Dashboard"));
 const TopCreativos  = lazy(() => import("./pages/TopCreativos"));
 const Conexoes      = lazy(() => import("./pages/Conexoes"));
+const Trackeamento  = lazy(() => import("./pages/Trackeamento"));
 const MetaCallback  = lazy(() => import("./pages/MetaCallback"));
 const Login         = lazy(() => import("./pages/Login"));
 const GA4Callback   = lazy(() => import("./pages/GA4Callback"));
@@ -34,6 +35,7 @@ const PAGE_TITLES = {
   "/":               "Dashboard",
   "/top-criativos":  "Top Criativos",
   "/conexoes":       "Conexões",
+  "/trackeamento":   "Trackeamento",
   "/meta/callback":  "Conectando…",
 };
 
@@ -73,6 +75,7 @@ function AppLayout() {
               <Route path="/"               element={<Dashboard />}    />
               <Route path="/top-criativos"  element={<RequireMetaConnection><TopCreativos /></RequireMetaConnection>} />
               <Route path="/conexoes"       element={<Conexoes />}     />
+              <Route path="/trackeamento"   element={<Trackeamento />} />
               <Route path="/meta/callback"  element={<MetaCallback />} />
               <Route path="*"              element={<NotFound />}     />
             </Routes>

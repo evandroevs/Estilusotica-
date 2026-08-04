@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Target, LayoutDashboard, ChevronsLeft, ChevronsRight, Trophy, Plug,
+  MessageCircle,
 } from "lucide-react";
 import { BRAND_NAME } from "../../lib/brand";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
@@ -9,6 +10,7 @@ const NAV_ITEMS = [
   { to: "/",               Icon: LayoutDashboard, label: "Dashboard"      },
   { to: "/top-criativos",  Icon: Trophy,          label: "Top Criativos"  },
   { to: "/conexoes",       Icon: Plug,            label: "Conexões"       },
+  { to: "/trackeamento",   Icon: MessageCircle,   label: "Trackeamento"   },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {

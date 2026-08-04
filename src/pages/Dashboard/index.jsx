@@ -9,7 +9,6 @@ import {
 import GA4 from "./GA4";
 import GoogleAds from "./GoogleAds";
 import Relatorios from "./Relatorios";
-import Trackeamento from "./Trackeamento";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
@@ -728,7 +727,6 @@ export default function Dashboard() {
             { key: "gads",      label: "Google",     Icon: Megaphone },
             // GA4 fica oculto no SaaS v1 — volta quando o OAuth
             // Google por workspace for portado: { key: "ga4", label: "GA4", Icon: BarChart3 },
-            { key: "track",     label: "Trackeamento", Icon: MessageCircle },
             { key: "relatorio", label: "Relatórios", Icon: FileText  },
           ].map(({ key, label, Icon }) => (
             <button
@@ -773,7 +771,6 @@ export default function Dashboard() {
 
       {view === "ga4" && <GA4 />}
       {view === "gads" && <GoogleAds />}
-      {view === "track" && <Trackeamento />}
       {view === "relatorio" && <Relatorios />}
 
       {view === "geral" && (

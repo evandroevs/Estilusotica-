@@ -1,9 +1,11 @@
 /**
- * Trackeamento — leads do WhatsApp → venda na loja física.
+ * Trackeamento — página própria (sidebar): leads do WhatsApp → venda na loja.
  *
  * Feita para o VENDEDOR: zero digitação além do valor da venda.
- * Leads entram sozinhos (Edge Function lead-webhook + realtime);
- * aqui só se confirma a venda (valor + foto da NF) ou marca "não comprou".
+ * Leads entram sozinhos (lead-webhook + realtime). Duas formas de dar baixa:
+ *   1. Foto da nota fiscal → IA (nf-match) lê telefone/valor → cruza com os
+ *      leads e registra a venda sozinha quando o telefone bate.
+ *   2. Manual: clica no lead → valor → Confirmar Venda.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../context/ToastContext";
+import { Sparkles, Upload } from "lucide-react";
 
 /* ─── Status ─────────────────────────────────────────────────────────────── */
 
@@ -248,6 +251,167 @@ function LeadDrawer({ lead, onClose }) {
   );
 }
 
+
+/* ─── Registrar venda pela nota fiscal (IA cruza o telefone) ─────────────── */
+
+function CardNotaFiscal({ leadsAbertos }) {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const fileRef = useRef(null);
+
+  // fase: idle | lendo | escolher | ok
+  const [nf, setNf] = useState({ fase: "idle" });
+  const [leadEscolhido, setLeadEscolhido] = useState("");
+  const [valorManual, setValorManual] = useState("");
+
+  const reset = () => { setNf({ fase: "idle" }); setLeadEscolhido(""); setValorManual(""); };
+
+  async function darBaixa(leadId, valor, notaUrl) {
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("leads")
+      .update({
+        status: "vendido",
+        valor_venda: valor,
+        vendido_em: new Date().toISOString(),
+        confirmado_por: userData?.user?.id ?? null,
+        nota_fiscal_url: notaUrl,
+      })
+      .eq("id", leadId);
+    if (error) throw error;
+    qc.invalidateQueries({ queryKey: ["leads"] });
+  }
+
+  async function onFoto(file) {
+    if (!file) return;
+    setNf({ fase: "lendo" });
+    try {
+      // 1. sobe a foto
+      const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
+      const path = `nf/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("notas-fiscais").upload(path, file);
+      if (upErr) throw upErr;
+      const notaUrl = supabase.storage.from("notas-fiscais").getPublicUrl(path).data.publicUrl;
+
+      // 2. IA lê e cruza com os leads
+      const { data, error } = await supabase.functions.invoke("nf-match", { body: { nota_url: notaUrl } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const { extraido, ia_ok, candidatos } = data;
+
+      // 3. telefone bateu com exatamente 1 lead e a IA leu o valor → baixa automática
+      if (candidatos?.length === 1 && extraido?.valor > 0) {
+        await darBaixa(candidatos[0].id, extraido.valor, notaUrl);
+        setNf({ fase: "ok", lead: candidatos[0], valor: extraido.valor });
+        toast?.success?.(`Venda cruzada com ${candidatos[0].nome}! 🎉`);
+        setTimeout(reset, 6000);
+        return;
+      }
+
+      // 4. senão, vendedor escolhe o lead (candidatos primeiro; senão todos os abertos)
+      setNf({ fase: "escolher", notaUrl, extraido, ia_ok, candidatos: candidatos ?? [] });
+      if (candidatos?.length) setLeadEscolhido(candidatos[0].id);
+      if (extraido?.valor > 0) setValorManual(String(extraido.valor).replace(".", ","));
+    } catch (err) {
+      toast?.error?.(err.message ?? String(err));
+      reset();
+    }
+  }
+
+  const opcoes = nf.fase === "escolher" && nf.candidatos.length ? nf.candidatos : leadsAbertos;
+  const valorNum = Number(valorManual.replace(/\./g, "").replace(",", "."));
+
+  return (
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Sparkles size={14} className="text-accent" />
+        <h3 className="text-sm font-bold text-white">Registrar venda pela nota fiscal</h3>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">
+        Tire a foto da nota que a IA lê o telefone e o valor e dá baixa no lead sozinha.
+      </p>
+
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => { onFoto(e.target.files?.[0]); e.target.value = ""; }} />
+
+      {nf.fase === "idle" && (
+        <button type="button" onClick={() => fileRef.current?.click()}
+          className="w-full py-4 rounded-xl bg-accent text-black text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover transition-colors">
+          <Camera size={16} /> Tirar foto da nota
+        </button>
+      )}
+
+      {nf.fase === "lendo" && (
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-400">
+          <Loader2 size={16} className="animate-spin text-accent" /> Lendo a nota e cruzando com os leads…
+        </div>
+      )}
+
+      {nf.fase === "ok" && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-green-900/60 bg-green-950/30 px-4 py-3.5">
+          <CheckCircle2 size={18} className="text-green-400 shrink-0" />
+          <p className="text-sm text-green-300">
+            Venda de <span className="font-bold">{BRL(nf.valor)}</span> registrada para{" "}
+            <span className="font-bold">{nf.lead.nome}</span> — telefone conferido pela nota.
+          </p>
+        </div>
+      )}
+
+      {nf.fase === "escolher" && (
+        <div className="space-y-3">
+          <p className="text-xs rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-gray-400">
+            {!nf.ia_ok
+              ? "A leitura por IA não está configurada — escolha o cliente e informe o valor:"
+              : nf.candidatos.length > 1
+                ? "Mais de um lead tem esse telefone — confirme qual é:"
+                : nf.extraido?.telefone
+                  ? "Nenhum lead aberto tem o telefone da nota — escolha o cliente:"
+                  : "Não consegui ler o telefone na nota — escolha o cliente:"}
+            {nf.ia_ok && nf.extraido?.telefone && (
+              <span className="block text-gray-600 mt-1">Telefone lido: {nf.extraido.telefone}{nf.extraido?.nome ? ` · Nome: ${nf.extraido.nome}` : ""}</span>
+            )}
+          </p>
+
+          <select value={leadEscolhido} onChange={(e) => setLeadEscolhido(e.target.value)}
+            className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 px-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40">
+            <option value="">Escolha o cliente…</option>
+            {opcoes.map((l) => (
+              <option key={l.id} value={l.id}>{l.nome}{l.telefone ? ` — ${l.telefone}` : ""}</option>
+            ))}
+          </select>
+
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+            <input type="text" inputMode="decimal" placeholder="Valor da venda" value={valorManual}
+              onChange={(e) => setValorManual(e.target.value.replace(/[^\d.,]/g, ""))}
+              className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 pl-10 pr-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-accent/40" />
+          </div>
+
+          <div className="flex gap-2">
+            <button type="button" disabled={!leadEscolhido || !(valorNum > 0)}
+              onClick={async () => {
+                try {
+                  await darBaixa(leadEscolhido, valorNum, nf.notaUrl);
+                  const lead = opcoes.find((l) => l.id === leadEscolhido);
+                  toast?.success?.(`Venda registrada para ${lead?.nome ?? "o cliente"}! 🎉`);
+                  reset();
+                } catch (err) { toast?.error?.(err.message ?? String(err)); }
+              }}
+              className="flex-1 py-3 rounded-xl bg-accent text-black text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover transition-colors disabled:opacity-40">
+              <CheckCircle2 size={15} /> Confirmar venda
+            </button>
+            <button type="button" onClick={reset}
+              className="px-4 py-3 rounded-xl border border-gray-700 text-gray-400 text-sm font-semibold hover:text-white transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Tela principal ─────────────────────────────────────────────────────── */
 
 export default function Trackeamento() {
@@ -306,6 +470,9 @@ export default function Trackeamento() {
         <KpiHoje icon={Percent}     label="Taxa de Conversão" value={kpis.taxa == null ? "—" : kpis.taxa.toFixed(0) + "%"} color="#A78BFA" />
         <KpiHoje icon={DollarSign}  label="Valor Vendido Hoje" value={BRL(kpis.valorHoje)} color="#C8FF00" />
       </div>
+
+      {/* Registrar venda pela nota fiscal */}
+      <CardNotaFiscal leadsAbertos={(leads ?? []).filter((l) => l.status === "em_atendimento" || l.status === "aguardando")} />
 
       {/* Filtro por status */}
       <div className="flex items-center gap-1 flex-wrap">
