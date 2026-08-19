@@ -46,13 +46,11 @@ function AppLayout() {
   const { pathname } = useLocation();
   const title = PAGE_TITLES[pathname] ?? BRAND_NAME;
 
-  const [collapsed, setCollapsed] = useState(() =>
-    localStorage.getItem("sidebar-collapsed") === "true",
   const isMobile = useIsMobile();
 
+  const [collapsed, setCollapsed] = useState(() =>
+    localStorage.getItem("sidebar-collapsed") === "true",
   );
-
-  const sidebarWidth = isMobile ? 0 : collapsed ? 64 : 240;
   // No mobile a sidebar vira drawer: sempre expandida por dentro, escondida
   // fora da tela até o usuário abrir pelo botão da TopBar.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -64,6 +62,8 @@ function AppLayout() {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [isMobile, drawerOpen]);
+
+  const sidebarWidth = isMobile ? 0 : collapsed ? 64 : 240;
 
   function handleToggle() {
     setCollapsed(prev => {
