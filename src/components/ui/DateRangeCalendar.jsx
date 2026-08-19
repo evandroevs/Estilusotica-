@@ -37,7 +37,7 @@ function MonthGrid({ year, month, draft, maxDate, onPick }) {
   ];
 
   return (
-    <div className="w-56">
+    <div className="w-full max-w-[224px] mx-auto sm:w-56">
       <p className="text-center text-sm font-semibold text-gray-200 mb-2">
         {MESES[month]} {year}
       </p>
@@ -57,7 +57,7 @@ function MonthGrid({ year, month, draft, maxDate, onPick }) {
               type="button"
               disabled={disabled}
               onClick={() => onPick(str)}
-              className={`h-7 w-7 mx-auto rounded-lg text-xs tabular-nums transition-colors ${
+              className={`h-8 w-8 sm:h-7 sm:w-7 mx-auto rounded-lg text-xs tabular-nums transition-colors ${
                 disabled        ? "text-gray-700 cursor-not-allowed"
                 : isEdge        ? "bg-accent text-black font-bold"
                 : inRange       ? "bg-accent-dim text-accent"
@@ -83,10 +83,15 @@ export function DateRangeCalendar({ value, onApply, onClose }) {
     end:   value?.end   ?? todayStr,
   });
 
-  // Mês esquerdo: mês anterior ao da data final (direito = mês da data final)
+  // Desktop mostra dois meses: o esquerdo é o mês anterior ao da data final.
+  // No mobile só cabe um — aí ele já abre no mês da própria data final.
   const [by, bm] = (value?.end ?? todayStr).split("-").map(Number);
-  const baseLeft = new Date(by, bm - 2, 1);
-  const [view, setView] = useState({ y: baseLeft.getFullYear(), m: baseLeft.getMonth() });
+  const [view, setView] = useState(() => {
+    const oneMonth = typeof window !== "undefined"
+      && window.matchMedia("(max-width: 639px)").matches;
+    const base = new Date(by, bm - (oneMonth ? 1 : 2), 1);
+    return { y: base.getFullYear(), m: base.getMonth() };
+  });
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -124,10 +129,15 @@ export function DateRangeCalendar({ value, onApply, onClose }) {
   return (
     <div
       ref={ref}
-      className="absolute top-full mt-2 left-0 z-40 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-4 flex gap-4"
+      className="fixed inset-x-3 top-20 z-50 max-h-[80vh] overflow-y-auto
+                 sm:absolute sm:inset-x-auto sm:top-full sm:mt-2 sm:left-0 sm:max-h-none sm:overflow-visible
+                 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-4
+                 flex flex-col gap-3 sm:flex-row sm:gap-4"
     >
-      {/* Presets */}
-      <div className="flex flex-col gap-1 pr-4 border-r border-gray-800 shrink-0">
+      {/* Presets — linha rolável no mobile, coluna no desktop */}
+      <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1
+                      sm:flex-col sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0
+                      sm:pr-4 sm:border-r sm:border-gray-800 sm:shrink-0">
         {PRESETS.map((p) => (
           <button
             key={p.label}
@@ -146,7 +156,7 @@ export function DateRangeCalendar({ value, onApply, onClose }) {
 
       {/* Calendários + ações */}
       <div>
-        <div className="flex items-start gap-6 relative">
+        <div className="flex items-start justify-center gap-6 relative">
           <button
             type="button"
             onClick={() => shift(-1)}
@@ -163,14 +173,16 @@ export function DateRangeCalendar({ value, onApply, onClose }) {
           </button>
 
           <MonthGrid year={view.y} month={view.m} draft={draft} maxDate={todayStr} onPick={pick} />
-          <MonthGrid year={next.getFullYear()} month={next.getMonth()} draft={draft} maxDate={todayStr} onPick={pick} />
+          <div className="hidden sm:block">
+            <MonthGrid year={next.getFullYear()} month={next.getMonth()} draft={draft} maxDate={todayStr} onPick={pick} />
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-gray-700 text-xs font-semibold text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+            className="px-4 py-2 sm:py-1.5 rounded-lg border border-gray-700 text-xs font-semibold text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
           >
             Cancelar
           </button>
@@ -178,7 +190,7 @@ export function DateRangeCalendar({ value, onApply, onClose }) {
             type="button"
             disabled={!draft.start}
             onClick={() => onApply({ start: draft.start, end: draft.end ?? draft.start })}
-            className="px-4 py-1.5 rounded-lg bg-accent text-black text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 sm:py-1.5 rounded-lg bg-accent text-black text-xs font-bold hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             Aplicar
           </button>

@@ -415,11 +415,11 @@ export default function Relatorio() {
   const PRODS = ["todos", ...new Set((campQ.data ?? []).map((r) => r.produto))].filter((p) => p !== "Outros");
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 md:space-y-5">
       {/* ── Filtros ── */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 px-5 py-4 flex flex-wrap items-center gap-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 md:px-5 py-3.5 md:py-4 flex flex-wrap items-center gap-3 md:gap-4">
         <PeriodFilter period={period} custom={custom} onPeriodChange={setPeriod} onCustomChange={setCustom} />
-        <div className="flex items-center gap-1 flex-wrap ml-auto">
+        <div className="flex items-center gap-1 flex-wrap md:ml-auto">
           {PRODS.map((p) => (
             <button key={p} type="button" onClick={() => setProduto(p)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${

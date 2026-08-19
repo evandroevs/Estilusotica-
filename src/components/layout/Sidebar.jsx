@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Target, LayoutDashboard, ChevronsLeft, ChevronsRight, Trophy, Plug,
-  MessageCircle,
+  MessageCircle, X,
 } from "lucide-react";
 import { BRAND_NAME } from "../../lib/brand";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
@@ -13,12 +13,26 @@ const NAV_ITEMS = [
   { to: "/trackeamento",   Icon: MessageCircle,   label: "Trackeamento"   },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, isMobile = false, open = false, onClose }) {
   return (
+    <>
+      {/* Overlay do drawer (só mobile) */}
+      {isMobile && open && (
+        <div
+          onClick={onClose}
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden"
+        />
+      )}
+
     <aside
-      style={{ width: collapsed ? 64 : 240, backgroundColor: "var(--chrome-bg)" }}
-      className="fixed left-0 top-0 h-screen flex flex-col z-30 shrink-0
-                 transition-[width] duration-200 overflow-hidden"
+      style={{
+        width: isMobile ? 260 : collapsed ? 64 : 240,
+        backgroundColor: "var(--chrome-bg)",
+        transform: isMobile && !open ? "translateX(-100%)" : "translateX(0)",
+      }}
+      className="fixed left-0 top-0 h-screen flex flex-col z-50 shrink-0
+                 transition-[width,transform] duration-200 overflow-hidden"
     >
       {/* Logo */}
       <div
@@ -33,6 +47,17 @@ export default function Sidebar({ collapsed, onToggle }) {
             {BRAND_NAME}
           </span>
         )}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar menu"
+            style={{ color: "var(--nav-inactive)" }}
+            className="hover-chrome ml-auto flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
+          >
+            <X size={17} />
+          </button>
+        )}
       </div>
 
       {/* Seletor de loja — colado no logo */}
@@ -45,6 +70,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             key={to}
             to={to}
             end={to === "/"}
+            onClick={onClose}
             title={collapsed ? label : undefined}
             style={({ isActive }) =>
               isActive
@@ -54,7 +80,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg text-xs font-semibold
                transition-all duration-150 whitespace-nowrap
-               ${collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"}
+               ${collapsed ? "justify-center px-0 py-2.5" : "px-3 py-3 md:py-2.5"}
                ${isActive ? "shadow-sm" : "hover-chrome"}`
             }
           >
@@ -64,7 +90,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         ))}
       </nav>
 
-      {/* Footer — collapse toggle */}
+      {/* Footer — collapse toggle (no mobile o drawer não recolhe) */}
       <div
         style={{ borderTop: "1px solid var(--chrome-border)" }}
         className="px-2 py-4 shrink-0"
@@ -74,6 +100,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             © 2026 {BRAND_NAME}
           </p>
         )}
+        {!isMobile && (
         <button
           type="button"
           onClick={onToggle}
@@ -92,7 +119,9 @@ export default function Sidebar({ collapsed, onToggle }) {
             </>
           )}
         </button>
+        )}
       </div>
     </aside>
+    </>
   );
 }

@@ -553,10 +553,10 @@ export function AddToLibraryModal({ ad, products, onClose, periodo = null }) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 md:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[94vh] md:max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="flex items-start gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
@@ -573,10 +573,10 @@ export function AddToLibraryModal({ ad, products, onClose, periodo = null }) {
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 overflow-hidden min-h-0">
+        <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden min-h-0">
 
           {/* Left: thumbnail + metrics */}
-          <div className="w-48 shrink-0 border-r border-gray-800 flex flex-col">
+          <div className="w-full md:w-48 shrink-0 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col">
             <div
               className="h-36 shrink-0"
               style={{
@@ -610,7 +610,7 @@ export function AddToLibraryModal({ ad, products, onClose, periodo = null }) {
           </div>
 
           {/* Right: form */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="flex-1 md:overflow-y-auto p-4 md:p-5 space-y-4">
             <div>
               <FieldLabel required>Nome do criativo</FieldLabel>
               <input
@@ -1198,10 +1198,10 @@ export default function CreativeModal({ ad, products, onClose, periodo = null })
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 md:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[94vh] md:max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* ── Header ── */}
         <div className="flex items-start gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
@@ -1222,11 +1222,11 @@ export default function CreativeModal({ ad, products, onClose, periodo = null })
           </button>
         </div>
 
-        {/* ── Body (2 col) ── */}
-        <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* ── Body (2 col no desktop, empilhado no mobile) ── */}
+        <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden min-h-0">
 
           {/* Left: media + meta */}
-          <div className="w-52 shrink-0 border-r border-gray-800 flex flex-col overflow-y-auto">
+          <div className="w-full md:w-52 shrink-0 border-b md:border-b-0 md:border-r border-gray-800 flex flex-col md:overflow-y-auto">
             <ModalMedia ad={ad} />
             <div className="p-4 flex-1">
               <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-2">Campanha</p>
@@ -1238,15 +1238,15 @@ export default function CreativeModal({ ad, products, onClose, periodo = null })
           </div>
 
           {/* Right: tabs */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className="flex-1 flex flex-col md:overflow-hidden min-w-0">
 
-            <div className="flex border-b border-gray-800 px-4 shrink-0">
+            <div className="flex border-b border-gray-800 px-4 shrink-0 overflow-x-auto">
               {TABS.map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
-                  className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
+                  className={`px-3 md:px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
                     tab === key
                       ? "border-accent text-accent"
                       : "border-transparent text-gray-500 hover:text-gray-300"
@@ -1257,11 +1257,11 @@ export default function CreativeModal({ ad, products, onClose, periodo = null })
               ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 md:overflow-y-auto p-4 md:p-5">
 
               {tab === "overview" && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 md:gap-3">
                     {[
                       { label: "ROAS",      key: "roas",           fmt: "roas" },
                       { label: "Compras",   key: "purchases",      fmt: "int"  },

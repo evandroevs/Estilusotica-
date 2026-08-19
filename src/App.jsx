@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -8,6 +8,7 @@ import Sidebar            from "./components/layout/Sidebar";
 import TopBar             from "./components/layout/TopBar";
 import { ToastProvider }  from "./context/ToastContext";
 import { ThemeProvider }  from "./context/ThemeContext";
+import { useIsMobile }    from "./hooks/useIsMobile";
 import { BRAND_NAME } from "./lib/brand";
 
 // Code splitting por rota: cada página vira um chunk próprio — o primeiro
@@ -47,9 +48,22 @@ function AppLayout() {
 
   const [collapsed, setCollapsed] = useState(() =>
     localStorage.getItem("sidebar-collapsed") === "true",
+  const isMobile = useIsMobile();
+
   );
 
-  const sidebarWidth = collapsed ? 64 : 240;
+  const sidebarWidth = isMobile ? 0 : collapsed ? 64 : 240;
+  // No mobile a sidebar vira drawer: sempre expandida por dentro, escondida
+  // fora da tela até o usuário abrir pelo botão da TopBar.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Com o drawer aberto, trava o scroll do body para não rolar por baixo.
+  useEffect(() => {
+    if (!isMobile || !drawerOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isMobile, drawerOpen]);
 
   function handleToggle() {
     setCollapsed(prev => {
@@ -61,15 +75,26 @@ function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-950">
-      <Sidebar collapsed={collapsed} onToggle={handleToggle} />
+      <Sidebar
+        collapsed={isMobile ? false : collapsed}
+        onToggle={handleToggle}
+        isMobile={isMobile}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       <div
-        className="flex flex-col flex-1 transition-[margin] duration-200"
+        className="flex flex-col flex-1 min-w-0 transition-[margin] duration-200"
         style={{ marginLeft: sidebarWidth }}
       >
-        <TopBar title={title} sidebarWidth={sidebarWidth} />
+        <TopBar
+          title={title}
+          sidebarWidth={sidebarWidth}
+          isMobile={isMobile}
+          onMenuClick={() => setDrawerOpen(true)}
+        />
 
-        <main className="flex-1 overflow-y-auto p-6" style={{ marginTop: 64 }}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ marginTop: 64 }}>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/"               element={<Dashboard />}    />

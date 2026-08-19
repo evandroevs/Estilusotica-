@@ -280,11 +280,11 @@ export default function TopCreativos() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 md:space-y-5">
 
       {/* ── Cabeçalho ─────────────────────────────────────────────────── */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 px-5 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 md:px-5 py-3.5 md:py-4">
+        <div className="flex items-center justify-between gap-3 md:gap-4 flex-wrap">
 
           {/* Period filter (Hoje/Ontem/7d/30d/Personalizado + auto-pull) */}
           <PeriodFilter
@@ -297,7 +297,7 @@ export default function TopCreativos() {
           />
 
           {/* Sort dropdown + classificar em lote + spinner */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 md:gap-2.5 flex-wrap">
             {loading && <RefreshCw size={12} className="text-gray-600 animate-spin" />}
 
             <button
@@ -313,13 +313,13 @@ export default function TopCreativos() {
               {batchRunning ? `Classificando ${batchDone}/${batchTotal}` : "Classificar em lote"}
             </button>
 
-            <div className="w-px h-4 bg-gray-700" />
+            <div className="hidden md:block w-px h-4 bg-gray-700" />
 
-            <span className="text-xs text-gray-500 whitespace-nowrap">Ordenar por</span>
+            <span className="hidden sm:inline text-xs text-gray-500 whitespace-nowrap">Ordenar por</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="h-8 rounded-lg border border-gray-700 bg-gray-800 px-2.5 text-xs text-gray-200
+              className="h-9 md:h-8 rounded-lg border border-gray-700 bg-gray-800 px-2.5 text-xs text-gray-200
                          focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
             >
               {SORT_OPTIONS.map(({ value, label }) => (
@@ -334,7 +334,7 @@ export default function TopCreativos() {
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
 
         {/* Tab bar */}
-        <div className="flex items-end border-b border-gray-800 px-2">
+        <div className="flex items-end border-b border-gray-800 px-2 overflow-x-auto">
           {[
             { key: "vendas", label: "Melhores Vendas",  sub: "Criativos com mais compras no período"  },
             { key: "hooks",  label: "Melhores Hooks",   sub: "Vídeos que vendem com a melhor retenção inicial" },
@@ -343,26 +343,26 @@ export default function TopCreativos() {
               key={key}
               type="button"
               onClick={() => handleTabChange(key)}
-              className={`flex flex-col px-5 py-3.5 text-left border-b-2 transition-colors ${
+              className={`flex flex-col px-3 md:px-5 py-3 md:py-3.5 text-left border-b-2 transition-colors shrink-0 ${
                 activeTab === key
                   ? "border-accent text-accent"
                   : "border-transparent text-gray-500 hover:text-gray-300"
               }`}
             >
-              <span className="text-sm font-semibold">{label}</span>
-              <span className="text-[11px] text-gray-600 mt-0.5">{sub}</span>
+              <span className="text-xs md:text-sm font-semibold whitespace-nowrap">{label}</span>
+              <span className="hidden md:block text-[11px] text-gray-600 mt-0.5">{sub}</span>
             </button>
           ))}
 
-          <span className="ml-auto pr-5 text-xs text-gray-600 self-center">
+          <span className="ml-auto pl-3 pr-2 md:pr-5 text-xs text-gray-600 self-center whitespace-nowrap">
             {loading ? "…" : `${ads.length} criativo${ads.length !== 1 ? "s" : ""}`}
           </span>
         </div>
 
         {/* Content */}
-        <div className="p-5">
+        <div className="p-4 md:p-5">
           {loading ? (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : ads.length === 0 ? (
@@ -372,7 +372,7 @@ export default function TopCreativos() {
               <p className="text-xs text-gray-600">Selecione um período mais amplo ou sincronize os dados em Configurações.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
               {ads.map((ad, idx) => (
                 <CreativeCard
                   key={ad.ad_id ?? ad.id}

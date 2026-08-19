@@ -12,13 +12,13 @@ export default function Relatorios() {
   const [modo, setModo] = useState("mensal");
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
+      <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit max-w-full overflow-x-auto">
         {[
           { key: "mensal",    label: "Mensal (Meta + Google)", Icon: CalendarDays },
           { key: "detalhado", label: "Detalhado (Meta)",       Icon: FileText },
         ].map(({ key, label, Icon }) => (
           <button key={key} type="button" onClick={() => setModo(key)}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
               modo === key ? "bg-accent text-black shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
             }`}>
             <Icon size={13} />

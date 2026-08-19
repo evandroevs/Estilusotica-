@@ -2,7 +2,8 @@
  * Google — sub-aba do Dashboard com métricas do Google Ads da loja ativa.
  * Lê do cache `google_ads_cache` (RLS filtra pelo workspace do header
  * x-workspace-id — trocar de loja na sidebar troca a conta do Google).
- * Alimentado de fora via Supermetrics (sync manual, service_role).
+ * Alimentado por export do Google Ads (sync manual, service_role) — a
+ * Edge Function google-ads-sync automatiza isso quando for ligada.
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -58,14 +59,14 @@ function DeltaBadge({ value, invertColor = false }) {
 
 function Kpi({ icon: Icon, label, value, deltaValue, invertColor = false, color }) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex flex-col gap-2">
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 md:p-4 flex flex-col gap-2 min-w-0">
       <div className="flex items-center gap-1.5">
         <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: color + "22" }}>
           <Icon size={12} style={{ color }} />
         </div>
         <span className="text-[11px] text-gray-500">{label}</span>
       </div>
-      <p className="text-xl font-bold text-white leading-none">{value}</p>
+      <p className="text-lg md:text-xl font-bold text-white leading-none tabular-nums truncate">{value}</p>
       <DeltaBadge value={deltaValue} invertColor={invertColor} />
     </div>
   );
@@ -134,17 +135,17 @@ export default function GoogleAds() {
   }, [rows, curStart, curEnd]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 md:space-y-5">
       {/* Período */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 px-5 py-3.5 flex items-center gap-3 flex-wrap">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 md:px-5 py-3.5 flex items-center gap-3 flex-wrap">
         <span className="text-xs text-gray-500 whitespace-nowrap">Google Ads da loja ativa</span>
-        <div className="ml-auto">
+        <div className="md:ml-auto">
           <PeriodFilter period={period} custom={custom} onPeriodChange={setPeriod} onCustomChange={setCustom} />
         </div>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-24 bg-gray-900 rounded-xl border border-gray-800 animate-pulse" />)}
         </div>
       ) : error ? (
@@ -157,7 +158,7 @@ export default function GoogleAds() {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <Kpi icon={DollarSign} label="Custo" value={BRL(cur.cost)} deltaValue={delta(cur.cost, prev?.cost)} invertColor color="#F87171" />
             <Kpi icon={Eye} label="Impressões" value={NUM(cur.impressions)} deltaValue={delta(cur.impressions, prev?.impressions)} color="#60A5FA" />
             <Kpi icon={MousePointerClick} label="Cliques" value={NUM(cur.clicks)} deltaValue={delta(cur.clicks, prev?.clicks)} color="#8B5CF6" />
@@ -169,7 +170,7 @@ export default function GoogleAds() {
           </div>
 
           {/* Série diária */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 md:p-5">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
               <h3 className="text-sm font-bold text-white">Custo e conversões por dia</h3>
               <div className="flex items-center gap-1">
@@ -209,7 +210,7 @@ export default function GoogleAds() {
 
           {/* Campanhas */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-gray-800 flex items-center gap-2">
+            <div className="px-4 md:px-5 py-3.5 border-b border-gray-800 flex items-center gap-2">
               <Megaphone size={14} className="text-accent" />
               <h3 className="text-sm font-bold text-white">Campanhas</h3>
             </div>
@@ -242,7 +243,7 @@ export default function GoogleAds() {
 
           {syncedAt && (
             <p className="text-[11px] text-gray-600">
-              Última sincronização: {new Date(syncedAt).toLocaleString("pt-BR")} — dados via Supermetrics (Google Ads).
+              Última sincronização: {new Date(syncedAt).toLocaleString("pt-BR")} — dados do Google Ads.
             </p>
           )}
         </>

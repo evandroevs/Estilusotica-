@@ -110,19 +110,18 @@ function DeltaBadge({ value, invertColor = false }) {
 function KpiCard({ title, value, prevValue, fmt, icon: Icon, color, invertColor = false }) {
   const d = delta(value, prevValue);
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-500 leading-tight">{title}</span>
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-3 md:p-4 flex flex-col gap-2 min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] md:text-xs font-medium text-gray-500 leading-tight">{title}</span>
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: color + "22" }}>
           <Icon size={13} style={{ color }} />
         </div>
       </div>
-      <p className="text-xl font-bold text-white leading-none">{fmt(value)}</p>
-      <div className="flex items-center gap-1.5">
+      <p className="text-lg md:text-xl font-bold text-white leading-none tabular-nums truncate">{fmt(value)}</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
         <DeltaBadge value={d} invertColor={invertColor} />
-        {d == null && <span className="text-xs text-gray-600">vs período anterior</span>}
-        {d != null && <span className="text-xs text-gray-600">vs período anterior</span>}
+        <span className="text-[11px] md:text-xs text-gray-600">vs período anterior</span>
       </div>
     </div>
   );
@@ -170,7 +169,7 @@ function ChartTooltip({ active, payload, label, left, right }) {
 function TrendChart({ title, subtitle, data, left, right = null }) {
   const hasData = (data ?? []).filter((d) => d[left.key] != null || (right && d[right.key] != null)).length > 0;
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 md:p-5">
       <h3 className="font-bold text-white text-sm">{title}</h3>
       <p className="text-[11px] text-gray-600 mt-0.5 mb-3">{subtitle}</p>
       {!hasData ? (
@@ -194,7 +193,7 @@ function TrendChart({ title, subtitle, data, left, right = null }) {
               tickFormatter={(v) => CHART_FMT[left.fmt](v)}
               axisLine={false}
               tickLine={false}
-              width={52}
+              width={44}
             />
             {right && (
               <YAxis
@@ -204,7 +203,7 @@ function TrendChart({ title, subtitle, data, left, right = null }) {
                 tickFormatter={(v) => CHART_FMT[right.fmt](v)}
                 axisLine={false}
                 tickLine={false}
-                width={52}
+                width={44}
               />
             )}
             <Tooltip content={<ChartTooltip left={left} right={right} />} />
@@ -262,7 +261,7 @@ function FunnelAquisicao({ m }) {
   const top = steps[0].value || 1;
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 md:p-5">
       <h3 className="font-bold text-white text-sm mb-4">Funil de Aquisição</h3>
       <div className="flex flex-col items-center max-w-2xl mx-auto">
         {steps.map((step, i) => {
@@ -277,10 +276,10 @@ function FunnelAquisicao({ m }) {
           return (
             <div key={step.label} className="w-full flex flex-col items-center">
               <div
-                className="rounded-xl border border-gray-700 px-4 py-2 flex items-center justify-between gap-3"
-                style={{ width: widths[i], backgroundColor: `rgba(200,255,0,${opacity})` }}
+                className="rounded-xl border border-gray-700 px-3 md:px-4 py-2 flex items-center justify-between gap-2 md:gap-3 max-w-full"
+                style={{ width: widths[i], minWidth: 200, backgroundColor: `rgba(200,255,0,${opacity})` }}
               >
-                <span className="text-xs text-gray-400 leading-tight truncate">{step.label}</span>
+                <span className="text-[11px] md:text-xs text-gray-400 leading-tight truncate">{step.label}</span>
                 <span className="text-right shrink-0">
                   <span className={`text-sm font-bold leading-none ${hasData ? "text-white" : "text-gray-600"}`}>
                     {hasData ? NUM(step.value) : "N/D"}
@@ -343,7 +342,7 @@ function ProductTable({ rows, products, groupBy = "product" }) {
 
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between gap-3">
+      <div className="px-4 md:px-5 py-3.5 md:py-4 border-b border-gray-800 flex items-center justify-between gap-3 flex-wrap">
         <h3 className="font-bold text-white text-sm">{title}</h3>
         {isCampaign && (
           <span className="text-[11px] text-gray-500">
@@ -365,7 +364,7 @@ function ProductTable({ rows, products, groupBy = "product" }) {
           <tbody>
             {grouped.map((r, i) => (
               <tr key={r.key} className={`border-t border-gray-800 ${i % 2 === 0 ? "bg-gray-900" : "bg-gray-900/60"}`}>
-                <td className="px-4 py-2.5 font-medium text-gray-200 whitespace-nowrap max-w-[260px] truncate" title={r.nome}>{r.nome}</td>
+                <td className="px-4 py-2.5 font-medium text-gray-200 whitespace-nowrap max-w-[160px] md:max-w-[260px] truncate" title={r.nome}>{r.nome}</td>
                 <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">{NUM(r.adCount)}</td>
                 <td className="px-4 py-2.5 text-gray-300 whitespace-nowrap">{BRL(r.spend)}</td>
                 <td className="px-4 py-2.5 text-gray-300 whitespace-nowrap">{BRL(r.cplpv)}</td>
@@ -415,7 +414,7 @@ function SegmentBlock({ rows }) {
   }, [rows]);
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 md:p-5">
       <h3 className="font-bold text-white text-sm mb-4">Distribuição por Segmento de Público</h3>
       <div className="space-y-3">
         {segs.map((s) => (
@@ -457,7 +456,7 @@ function TopCreativosBlock({ rows, onSelect }) {
   if (!top.length) return null;
 
   return (
-    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 p-4 md:p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-white text-sm">Top Criativos</h3>
         <Link
@@ -467,7 +466,7 @@ function TopCreativosBlock({ rows, onSelect }) {
           Ver todos <ArrowRight size={12} />
         </Link>
       </div>
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2.5 md:gap-3">
         {top.map((ad, i) => (
           <button
             key={ad.ad_id}
@@ -717,11 +716,11 @@ export default function Dashboard() {
 
   /* ─── Render ─────────────────────────────────────────────────────────── */
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 md:space-y-5">
 
       {/* ── Sub-abas: Visão Geral | Relatório + seletor de formato ───────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
+        <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit max-w-full overflow-x-auto">
           {[
             { key: "geral",     label: "Meta Ads",   Icon: BarChart2 },
             { key: "gads",      label: "Google",     Icon: Megaphone },
@@ -733,7 +732,7 @@ export default function Dashboard() {
               key={key}
               type="button"
               onClick={() => setView(key)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                 view === key ? "bg-accent text-black shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
               }`}
             >
@@ -745,7 +744,7 @@ export default function Dashboard() {
 
         {/* Formato dos KPIs: e-commerce (loja online) × negócio local (mensagens) */}
         {view === "geral" && (
-          <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit">
+          <div className="flex items-center gap-1 bg-gray-900 rounded-xl border border-gray-800 p-1.5 w-fit max-w-full overflow-x-auto">
             {[
               { key: "ecommerce", label: "E-commerce",    Icon: ShoppingCart  },
               { key: "local",     label: "Tráfego Local", Icon: MessageCircle },
@@ -757,7 +756,7 @@ export default function Dashboard() {
                   ? "KPIs para negócio local: mensagens, custo por mensagem, alcance e frequência"
                   : "KPIs para loja online: receita, ROAS, CPA e taxa de conversão"}
                 onClick={() => { setDashFormat(key); localStorage.setItem("dash-format", key); }}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                   dashFormat === key ? "bg-accent text-black shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"
                 }`}
               >
@@ -777,7 +776,7 @@ export default function Dashboard() {
       <RequireMetaConnection>
       <>
       {/* ── Filtros ──────────────────────────────────────────────────────── */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 px-5 py-4 flex flex-wrap items-center gap-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 md:px-5 py-3.5 md:py-4 flex flex-wrap items-center gap-3 md:gap-4">
         {/* Period filter (Hoje/Ontem/7d/30d/Personalizado + auto-pull) */}
         <PeriodFilter
           period={period}
@@ -787,13 +786,13 @@ export default function Dashboard() {
           syncing={syncing}
         />
 
-        <div className="w-px self-stretch bg-gray-800" />
+        <div className="hidden md:block w-px self-stretch bg-gray-800" />
 
         {/* Menu 1 — Categoria: Produto | Macro | Micro | UGC */}
         <select
           value={category}
           onChange={(e) => { setCategory(e.target.value); setProductId(""); }}
-          className="h-8 rounded-lg border border-gray-700 bg-gray-800 px-3 text-xs text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
+          className="h-9 md:h-8 flex-1 min-w-[140px] sm:flex-none rounded-lg border border-gray-700 bg-gray-800 px-3 text-xs text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
         >
           <option value="">Todas as Categorias</option>
           {CATEGORIAS.map((c) => (
@@ -806,7 +805,7 @@ export default function Dashboard() {
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
           disabled={!category}
-          className="h-8 rounded-lg border border-gray-700 bg-gray-800 px-3 text-xs text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-9 md:h-8 flex-1 min-w-[140px] sm:flex-none rounded-lg border border-gray-700 bg-gray-800 px-3 text-xs text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {!category && <option value="">Selecione a categoria</option>}
           {category === "produto" && (
@@ -829,14 +828,14 @@ export default function Dashboard() {
 
         {/* Contador de anúncios com a nomenclatura selecionada */}
         {nameFilter && !loading && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-xs font-semibold text-accent whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1.5 text-xs font-semibold text-accent">
             <span className="w-1.5 h-1.5 rounded-full bg-accent" />
             {m?.adCount ?? 0} anúncio{(m?.adCount ?? 0) !== 1 ? "s" : ""} ativo{(m?.adCount ?? 0) !== 1 ? "s" : ""} com "{nameFilter.label}" no período
           </span>
         )}
 
         {loading && (
-          <div className="ml-auto flex items-center gap-1.5 text-xs text-gray-500">
+          <div className="md:ml-auto flex items-center gap-1.5 text-xs text-gray-500">
             <RefreshCw size={12} className="animate-spin" />
             Atualizando…
           </div>
@@ -845,11 +844,11 @@ export default function Dashboard() {
 
       {/* ── KPI Linha 1 ──────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : dashFormat === "local" ? (
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
           <KpiCard title="Investimento"       value={m?.spend}            prevValue={mPrev?.spend}            fmt={BRL} icon={DollarSign}    color="#60A5FA" />
           <KpiCard title="Mensagens"          value={m?.messages}         prevValue={mPrev?.messages}         fmt={NUM} icon={MessageCircle} color="#C8FF00" />
           <KpiCard title="Custo por Mensagem" value={m?.custoPorMensagem} prevValue={mPrev?.custoPorMensagem} fmt={BRL} icon={MessageCircle} color="#F87171" invertColor />
@@ -858,7 +857,7 @@ export default function Dashboard() {
           <KpiCard title="Total de Vendas"    value={m?.revenue}          prevValue={mPrev?.revenue}          fmt={BRL} icon={TrendingUp}    color="#4ADE80" />
         </div>
       ) : (
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
           <KpiCard title="Investimento"   value={m?.spend}     prevValue={mPrev?.spend}     fmt={BRL}  icon={DollarSign}   color="#60A5FA" />
           <KpiCard title="Receita"        value={m?.revenue}   prevValue={mPrev?.revenue}   fmt={BRL}  icon={TrendingUp}   color="#4ADE80" />
           <KpiCard title="ROAS"           value={m?.roas}      prevValue={mPrev?.roas}      fmt={ROAS} icon={BarChart2}    color="#C8FF00" />
@@ -870,11 +869,11 @@ export default function Dashboard() {
 
       {/* ── KPI Linha 2 ──────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : dashFormat === "local" ? (
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
           <KpiCard title="ROAS"       value={m?.roas}       prevValue={mPrev?.roas}       fmt={ROAS}          icon={BarChart2}    color="#C8FF00" />
           <KpiCard title="CPA"        value={m?.cpa}        prevValue={mPrev?.cpa}        fmt={BRL}           icon={MousePointer} color="#F87171" invertColor />
           <KpiCard title="CPM"        value={m?.cpm}        prevValue={mPrev?.cpm}        fmt={BRL}           icon={Users}        color="#FB923C" invertColor />
@@ -882,7 +881,7 @@ export default function Dashboard() {
           <KpiCard title="Frequência" value={m?.frequencia} prevValue={mPrev?.frequencia} fmt={ROAS}          icon={Eye}          color="#C084FC" invertColor />
         </div>
       ) : (
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
           <KpiCard title="Taxa de Conversão" value={m?.conversionRate} prevValue={mPrev?.conversionRate} fmt={(v) => PCT(v)} icon={TrendingUp}   color="#4ADE80" />
           <KpiCard title="Ticket Médio"      value={m?.ticketMedio}    prevValue={mPrev?.ticketMedio}    fmt={BRL}           icon={DollarSign}   color="#60A5FA" />
           <KpiCard title="Connect Rate"      value={m?.connectRate}    prevValue={mPrev?.connectRate}    fmt={(v) => PCT(v)} icon={MousePointer} color="#C084FC" />
@@ -893,11 +892,11 @@ export default function Dashboard() {
 
       {/* ── Gráficos: fadiga criativa + conversão da LP ────────────────── */}
       {loading ? (
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
           <SkeletonBlock h="h-64" /><SkeletonBlock h="h-64" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
           <TrendChart
             title="Fadiga Criativa — ROAS × CPA"
             subtitle="ROAS caindo com CPA subindo = criativos cansando; hora de renovar"
@@ -918,8 +917,8 @@ export default function Dashboard() {
       {loading ? <SkeletonBlock h="h-36" /> : <FunnelAquisicao m={m} />}
 
       {/* ── Performance por Produto + Segmento ────────────────────────── */}
-      <div className="grid grid-cols-3 gap-5">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
+        <div className="lg:col-span-2 min-w-0">
           {loading
             ? <SkeletonBlock h="h-48" />
             : <ProductTable rows={curFiltered} products={products} groupBy={dProductId ? "campaign" : "product"} />
