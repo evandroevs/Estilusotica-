@@ -118,9 +118,18 @@ Deno.serve(async (req) => {
         });
         if (resp.ok) {
           const data = await resp.json();
-          const texto: string = data?.content?.[0]?.text ?? "";
-          const limpo = texto.replace(/```json|```/g, "").trim();
-          extraido = JSON.parse(limpo);
+
+          // O modelo pode devolver um bloco `thinking` antes do texto — pegar
+          // content[0] às cegas quebra justamente quando ele raciocina mais.
+          const blocos: Array<{ type?: string; text?: string }> = data?.content ?? [];
+          const texto = blocos.find((b) => b?.type === "text")?.text ?? "";
+
+          // Recorta o primeiro objeto JSON, caso venha cercado de explicação.
+          const cru = texto.replace(/```json|```/g, "").trim();
+          const json = cru.slice(cru.indexOf("{"), cru.lastIndexOf("}") + 1);
+          if (!json) throw new Error(`resposta sem JSON: ${cru.slice(0, 120)}`);
+
+          extraido = JSON.parse(json);
           ia_ok = true;
         } else {
           console.error("anthropic error", resp.status, await resp.text());
