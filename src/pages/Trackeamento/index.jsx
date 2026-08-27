@@ -536,20 +536,39 @@ function CardNotaFiscal({ leadsAbertos }) {
         </div>
       )}
 
-      {nf.fase === "escolher" && (
+      {nf.fase === "escolher" && (() => {
+        // Sem lead para casar, o seletor e o "Confirmar venda" só atrapalham
+        // quem está atendendo: sobra a pergunta que importa, veio de anúncio ou não.
+        const temLista = opcoes.length > 0;
+
+        const registrar = (avisarMeta) => async () => {
+          setSalvando(true);
+          try {
+            await registrarSemLead(valorNum, nf.notaUrl, {
+              ...nf.extraido,
+              produto: produtoManual.trim() || nf.extraido?.produto || null,
+            }, { avisarMeta });
+            addToast(avisarMeta
+              ? "Venda registrada e enviada à Meta. 🎉"
+              : "Venda avulsa registrada (não foi enviada à Meta).");
+            reset();
+          } catch (err) { addToast(err.message ?? String(err), "error"); setSalvando(false); }
+        };
+
+        return (
         <div className="space-y-3">
           <p className="text-xs rounded-lg border border-gray-800 bg-gray-950 px-3 py-2.5 text-gray-400">
             {!nf.ia_ok
-              ? "A leitura por IA não está configurada — escolha o cliente e informe o valor:"
-              : nf.candidatos.length > 1
-                ? "Mais de um lead combina — confirme qual é:"
-                : nf.candidatos.length === 1 && nf.candidatos[0].motivo === "nome"
-                  ? "Achei pelo NOME, não pelo telefone — confira antes de confirmar:"
-                  : nf.candidatos.length === 1 && nf.candidatos[0].ja_vendido
-                    ? "Esse lead já está marcado como vendido — confirme se não é uma segunda compra:"
-                    : nf.extraido?.telefone
-                      ? "Nenhum lead bate com essa ordem — escolha o cliente ou registre como venda avulsa:"
-                      : "Não consegui ler o telefone na ordem — escolha o cliente:"}
+              ? "A leitura por IA não está configurada — informe o valor:"
+              : !temLista
+                ? "Confira o valor e diga se esse cliente veio de um anúncio:"
+                : nf.candidatos.length > 1
+                  ? "Mais de um lead combina — confirme qual é:"
+                  : nf.candidatos[0]?.motivo === "nome"
+                    ? "Achei pelo NOME, não pelo telefone — confira antes de confirmar:"
+                    : nf.candidatos[0]?.ja_vendido
+                      ? "Esse lead já está marcado como vendido — confirme se não é uma segunda compra:"
+                      : "Nenhum lead bate com essa ordem — escolha o cliente ou siga sem ele:"}
             {nf.ia_ok && (nf.extraido?.telefone || nf.extraido?.nome || nf.extraido?.produto) && (
               <span className="block text-gray-600 mt-1">
                 Lido: {[
@@ -561,85 +580,73 @@ function CardNotaFiscal({ leadsAbertos }) {
             )}
           </p>
 
-          <select value={leadEscolhido} onChange={(e) => setLeadEscolhido(e.target.value)}
-            className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 px-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40">
-            <option value="">Escolha o cliente…</option>
-            {opcoes.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nome}{l.telefone ? ` — ${l.telefone}` : ""}
-                {l.veio_de_anuncio ? " · veio de anúncio" : ""}
-                {l.ja_vendido ? " · já vendido" : ""}
-              </option>
-            ))}
-          </select>
-
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
             <input type="text" inputMode="decimal" placeholder="Valor da venda" value={valorManual}
               onChange={(e) => setValorManual(e.target.value.replace(/[^\d.,]/g, ""))}
-              className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 pl-10 pr-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-accent/40" />
+              className="w-full h-12 rounded-xl border border-gray-700 bg-gray-950 pl-10 pr-3 text-lg font-bold text-white focus:outline-none focus:ring-2 focus:ring-accent/40" />
           </div>
 
           <input type="text" placeholder="Produto (opcional)" value={produtoManual}
             onChange={(e) => setProdutoManual(e.target.value)}
             className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 px-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40" />
 
-          <div className="flex gap-2">
-            <button type="button" disabled={!leadEscolhido || !(valorNum > 0) || salvando}
-              onClick={async () => {
-                setSalvando(true);
-                try {
-                  await darBaixa(leadEscolhido, valorNum, nf.notaUrl, produtoManual.trim() || null);
-                  const lead = opcoes.find((l) => l.id === leadEscolhido);
-                  addToast(`Venda registrada para ${lead?.nome ?? "o cliente"}! 🎉`);
-                  reset();
-                } catch (err) { addToast(err.message ?? String(err), "error"); setSalvando(false); }
-              }}
-              className="flex-1 py-3 rounded-xl bg-accent text-black text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover transition-colors disabled:opacity-40">
-              {salvando ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} Confirmar venda
-            </button>
-            <button type="button" onClick={reset} disabled={salvando}
-              className="px-4 py-3 rounded-xl border border-gray-700 text-gray-400 text-sm font-semibold hover:text-white transition-colors disabled:opacity-40">
-              Cancelar
-            </button>
-          </div>
+          {/* A pergunta que o vendedor precisa responder */}
+          <button type="button" disabled={!(valorNum > 0) || salvando}
+            onClick={registrar(true)}
+            className="w-full py-4 rounded-xl bg-accent text-black text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover transition-colors disabled:opacity-40">
+            {salvando ? <Loader2 size={16} className="animate-spin" /> : <Megaphone size={16} />}
+            Cliente veio de anúncio
+          </button>
 
-          {/* Cliente não está entre os leads: registrar mesmo assim */}
-          <div className="pt-3 space-y-1.5 border-t border-gray-800">
-            <button type="button" disabled={!(valorNum > 0) || salvando}
-              onClick={async () => {
-                setSalvando(true);
-                try {
-                  await registrarSemLead(valorNum, nf.notaUrl, {
-                    ...nf.extraido,
-                    produto: produtoManual.trim() || nf.extraido?.produto || null,
-                  }, { avisarMeta: true });
-                  addToast("Venda registrada e enviada à Meta pelo telefone do cliente.");
-                  reset();
-                } catch (err) { addToast(err.message ?? String(err), "error"); setSalvando(false); }
-              }}
-              className="w-full py-2.5 rounded-xl border border-gray-700 text-gray-300 text-xs font-semibold inline-flex items-center justify-center gap-2 hover:border-gray-500 transition-colors disabled:opacity-40">
-              <Megaphone size={13} /> Cliente não está na lista — registrar e avisar a Meta
-            </button>
+          <button type="button" disabled={!(valorNum > 0) || salvando}
+            onClick={registrar(false)}
+            className="w-full py-3.5 rounded-xl border border-gray-700 text-gray-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:border-gray-500 transition-colors disabled:opacity-40">
+            <Store size={15} /> Não veio de anúncio
+          </button>
 
-            <button type="button" disabled={!(valorNum > 0) || salvando}
-              onClick={async () => {
-                setSalvando(true);
-                try {
-                  await registrarSemLead(valorNum, nf.notaUrl, {
-                    ...nf.extraido,
-                    produto: produtoManual.trim() || nf.extraido?.produto || null,
-                  }, { avisarMeta: false });
-                  addToast("Venda avulsa registrada (não foi enviada à Meta).");
-                  reset();
-                } catch (err) { addToast(err.message ?? String(err), "error"); setSalvando(false); }
-              }}
-              className="w-full py-2.5 rounded-xl border border-gray-800 text-gray-500 text-xs font-semibold inline-flex items-center justify-center gap-2 hover:text-gray-300 hover:border-gray-600 transition-colors disabled:opacity-40">
-              <Store size={13} /> Não veio de anúncio — venda avulsa
-            </button>
-          </div>
+          {/* Escolher um lead da lista continua possível, mas fora do caminho principal */}
+          {temLista && (
+            <details className="pt-1 border-t border-gray-800">
+              <summary className="pt-3 text-xs text-gray-500 cursor-pointer hover:text-gray-300">
+                Vincular a um cliente da lista
+              </summary>
+              <div className="mt-3 space-y-2">
+                <select value={leadEscolhido} onChange={(e) => setLeadEscolhido(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 px-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40">
+                  <option value="">Escolha o cliente…</option>
+                  {opcoes.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome}{l.telefone ? ` — ${l.telefone}` : ""}
+                      {l.veio_de_anuncio ? " · veio de anúncio" : ""}
+                      {l.ja_vendido ? " · já vendido" : ""}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" disabled={!leadEscolhido || !(valorNum > 0) || salvando}
+                  onClick={async () => {
+                    setSalvando(true);
+                    try {
+                      await darBaixa(leadEscolhido, valorNum, nf.notaUrl, produtoManual.trim() || null);
+                      const lead = opcoes.find((l) => l.id === leadEscolhido);
+                      addToast(`Venda registrada para ${lead?.nome ?? "o cliente"}! 🎉`);
+                      reset();
+                    } catch (err) { addToast(err.message ?? String(err), "error"); setSalvando(false); }
+                  }}
+                  className="w-full py-3 rounded-xl bg-accent text-black text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover transition-colors disabled:opacity-40">
+                  <CheckCircle2 size={15} /> Confirmar venda deste cliente
+                </button>
+              </div>
+            </details>
+          )}
+
+          <button type="button" onClick={reset} disabled={salvando}
+            className="w-full py-2 text-xs text-gray-600 hover:text-gray-400 transition-colors disabled:opacity-40">
+            Cancelar
+          </button>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
