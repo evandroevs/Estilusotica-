@@ -6,13 +6,19 @@
  *   POST /functions/v1/lead-webhook
  *   Header:  x-webhook-secret: <LEAD_WEBHOOK_SECRET>
  *   Body:    {
- *     nome?: string, telefone?: string,
+ *     nome?: string, telefone?: string, email?: string,
  *     origem?: "meta" | "google" | "outro",
  *     campanha?: string, anuncio?: string, vendedor?: string,
+ *     ctwa_clid?: string,            // <- ID do clique no anúncio click-to-WhatsApp
  *     loja?: "otica" | "select",     // OU workspace_id direto
  *     workspace_id?: string,
  *     iniciado_em?: string           // ISO; default now()
  *   }
+ *
+ * Se a automação conseguir extrair `referral.ctwa_clid` do webhook do WhatsApp,
+ * mande sempre — é o que permite atribuir a venda da loja ao anúncio exato.
+ * (A function `whatsapp-webhook` faz isso sozinha; esta aqui é para quem passa
+ * por n8n/Zapier no meio do caminho.)
  *
  * Sem JWT de usuário — autentica só pelo secret e escreve via service_role.
  */
@@ -90,10 +96,12 @@ Deno.serve(async (req) => {
       workspace_id: workspaceId,
       nome:        body.nome?.trim() || "Sem nome",
       telefone:    body.telefone ?? null,
+      email:       body.email ?? null,
       origem,
       campanha:    body.campanha ?? null,
       anuncio:     body.anuncio ?? null,
       vendedor:    body.vendedor ?? null,
+      ctwa_clid:   body.ctwa_clid ?? null,
       iniciado_em: body.iniciado_em ?? new Date().toISOString(),
     })
     .select("id")

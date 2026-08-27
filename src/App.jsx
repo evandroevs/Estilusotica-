@@ -18,6 +18,7 @@ const TopCreativos  = lazy(() => import("./pages/TopCreativos"));
 const Conexoes      = lazy(() => import("./pages/Conexoes"));
 const Trackeamento  = lazy(() => import("./pages/Trackeamento"));
 const MetaCallback  = lazy(() => import("./pages/MetaCallback"));
+const GoogleCallback = lazy(() => import("./pages/GoogleCallback"));
 const Login         = lazy(() => import("./pages/Login"));
 const GA4Callback   = lazy(() => import("./pages/GA4Callback"));
 const NotFound      = lazy(() => import("./pages/NotFound"));
@@ -38,6 +39,7 @@ const PAGE_TITLES = {
   "/conexoes":       "Conexões",
   "/trackeamento":   "Trackeamento",
   "/meta/callback":  "Conectando…",
+  "/google/callback": "Conectando…",
 };
 
 // ─── AppLayout (só renderizado quando autenticado) ─────────────
@@ -102,6 +104,7 @@ function AppLayout() {
               <Route path="/conexoes"       element={<Conexoes />}     />
               <Route path="/trackeamento"   element={<Trackeamento />} />
               <Route path="/meta/callback"  element={<MetaCallback />} />
+              <Route path="/google/callback" element={<GoogleCallback />} />
               <Route path="*"              element={<NotFound />}     />
             </Routes>
           </Suspense>

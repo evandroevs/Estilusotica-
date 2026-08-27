@@ -15,6 +15,8 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useMetaConnection, startMetaOAuth } from "../../hooks/useMetaConnection";
 import { useToast } from "../../context/ToastContext";
+import GoogleAdsCard from "./GoogleAdsCard";
+import TrackeamentoCard from "./TrackeamentoCard";
 
 function Card({ children }) {
   return (
@@ -216,10 +218,9 @@ export default function Conexoes() {
         </div>
       </Card>
 
-      <Card>
-        <h3 className="text-white font-semibold text-sm mb-1">Google (GA4 / Google Ads)</h3>
-        <p className="text-xs text-gray-500">Em breve — a primeira versão conecta apenas Meta Ads.</p>
-      </Card>
+      <GoogleAdsCard />
+
+      <TrackeamentoCard />
     </div>
   );
 }
