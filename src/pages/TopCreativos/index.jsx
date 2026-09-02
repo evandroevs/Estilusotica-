@@ -18,33 +18,40 @@ import CreativeModal from "../../components/CreativeModal";
 /* ─── Constants ──────────────────────────────────────────────────────────── */
 
 const SORT_OPTIONS = [
-  { value: "hook_score",      label: "Melhor Hook (vendas + thumbstop)", asc: false },
-  { value: "thumbstop_rate",  label: "Thumbstop Rate",  asc: false },
-  { value: "ctr",             label: "CTR",              asc: false },
-  { value: "conversion_rate", label: "Taxa de Conv.",    asc: false },
-  { value: "purchases",       label: "Compras",          asc: false },
-  { value: "cpa",             label: "Custo por compra", asc: true  },
-  { value: "roas",            label: "ROAS",             asc: false },
+  { value: "hook_score",       label: "Melhor Hook (vendas + thumbstop)", asc: false },
+  { value: "messages",         label: "Mensagens",          asc: false },
+  { value: "cost_per_message", label: "Custo por mensagem", asc: true  },
+  { value: "spend",            label: "Investimento",       asc: false },
+  { value: "reach",            label: "Alcance",            asc: false },
+  { value: "thumbstop_rate",   label: "Thumbstop Rate",     asc: false },
+  { value: "ctr",              label: "CTR",                asc: false },
+  { value: "conversion_rate",  label: "Taxa de Conv.",      asc: false },
+  { value: "purchases",        label: "Compras",            asc: false },
+  { value: "cpa",              label: "Custo por compra",   asc: true  },
+  { value: "roas",             label: "ROAS",               asc: false },
 ];
 
 const TAB_DEFAULT_SORT = { vendas: "purchases", hooks: "hook_score" };
 
+// As campanhas das lojas otimizam para CONVERSA, não para compra no site:
+// mensagem e custo por mensagem são o que o gestor olha todo dia. Taxa de
+// conversão e ROAS ficam no seletor de ordenação para quem quiser.
 const TAB_METRICS = {
   vendas: [
-    { key: "thumbstop_rate",  label: "Thumbstop", fmt: "pct"      },
-    { key: "ctr",             label: "CTR",        fmt: "pct"      },
-    { key: "conversion_rate", label: "Conv.",      fmt: "pct"      },
-    { key: "purchases",       label: "Compras",    fmt: "int"      },
-    { key: "cpa",             label: "CPA",        fmt: "currency" },
-    { key: "roas",            label: "ROAS",       fmt: "roas"     },
+    { key: "spend",            label: "Investido",  fmt: "currency" },
+    { key: "reach",            label: "Alcance",    fmt: "int"      },
+    { key: "messages",         label: "Mensagens",  fmt: "int"      },
+    { key: "cost_per_message", label: "Custo/msg",  fmt: "currency2"},
+    { key: "purchases",        label: "Compras",    fmt: "int"      },
+    { key: "ctr",              label: "CTR",        fmt: "pct"      },
   ],
   hooks: [
-    { key: "hook_score",     label: "Hook Score", fmt: "score"    },
-    { key: "purchases",      label: "Compras",    fmt: "int"      },
-    { key: "thumbstop_rate", label: "Thumbstop",  fmt: "pct"      },
-    { key: "ctr",            label: "CTR",        fmt: "pct"      },
-    { key: "connect_rate",   label: "Connect",    fmt: "pct"      },
-    { key: "spend",          label: "Investido",  fmt: "currency" },
+    { key: "hook_score",       label: "Hook Score", fmt: "score"    },
+    { key: "thumbstop_rate",   label: "Thumbstop",  fmt: "pct"      },
+    { key: "ctr",              label: "CTR",        fmt: "pct"      },
+    { key: "messages",         label: "Mensagens",  fmt: "int"      },
+    { key: "cost_per_message", label: "Custo/msg",  fmt: "currency2"},
+    { key: "spend",            label: "Investido",  fmt: "currency" },
   ],
 };
 
@@ -63,6 +70,7 @@ function fmtVal(v, fmt) {
   switch (fmt) {
     case "pct":      return v.toFixed(1) + "%";
     case "currency": return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+    case "currency2": return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
     case "roas":     return v.toFixed(2) + "x";
     case "int":      return new Intl.NumberFormat("pt-BR").format(Math.round(v));
     case "score":    return v.toFixed(1);
