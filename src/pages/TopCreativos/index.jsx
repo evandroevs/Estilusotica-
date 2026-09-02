@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, RefreshCw, Loader2, Tags } from "lucide-react";
+import { Trophy, RefreshCw, Loader2, Tags, Megaphone, Power } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../context/ToastContext";
 import { useAutoClassify } from "../../hooks/useAutoClassify";
 import { usePeriodAds } from "../../hooks/usePeriodAds";
+import { useAdStatus, estaAtivo } from "../../hooks/useAdStatus";
 import { useConfigBenchmarks } from "../../hooks/useConfig";
 import { useFunilReal } from "../../hooks/useFunilReal";
 import { PeriodFilter } from "../../components/ui/PeriodFilter";
@@ -207,6 +208,7 @@ export default function TopCreativos() {
   const [sortBy,     setSortBy]     = useState("purchases");
   const [activeTab,  setActiveTab]  = useState("vendas");
   const [selectedAd, setSelectedAd] = useState(null);
+  const [soAtivos,   setSoAtivos]   = useState(true);
 
   const { addToast } = useToast();
 
@@ -242,6 +244,9 @@ export default function TopCreativos() {
     custom: dCustom,
   });
 
+  // Quem está ligado agora na Meta (anúncio e campanha)
+  const { data: status } = useAdStatus();
+
   // Régua de cores das métricas (benchmarks de Configurações)
   const benchmarks = useConfigBenchmarks();
   const benchMap = useMemo(() => buildBenchMap(benchmarks), [benchmarks]);
@@ -258,6 +263,39 @@ export default function TopCreativos() {
     rows = rows.map((r) => ({ ...r, hook_score: hookScore(r) }));
     return sortAds(rows, sortBy);
   }, [rawAds, sortBy, activeTab]);
+
+  // Agrupa por campanha, escondendo o que não está no ar.
+  // O anúncio de uma campanha pausada já vem como CAMPAIGN_PAUSED da Meta,
+  // então o filtro por anúncio sozinho resolve os dois níveis.
+  const { grupos, totalVisivel, ocultos } = useMemo(() => {
+    const visiveis = soAtivos
+      ? ads.filter((a) => estaAtivo(status?.porAd?.get(a.ad_id)))
+      : ads;
+
+    const mapa = new Map();
+    for (const ad of visiveis) {
+      const id = ad.campaign_id ?? "sem-campanha";
+      if (!mapa.has(id)) {
+        const c = status?.porCampanha?.get(id);
+        mapa.set(id, {
+          id,
+          nome:  ad.campaign_name || c?.campaign_name || "Sem campanha",
+          ativa: estaAtivo(c?.effective_status),
+          ads:   [],
+          spend: 0,
+        });
+      }
+      const g = mapa.get(id);
+      g.ads.push(ad);
+      g.spend += Number(ad.spend) || 0;
+    }
+
+    return {
+      grupos: [...mapa.values()].sort((a, b) => b.spend - a.spend),
+      totalVisivel: visiveis.length,
+      ocultos: ads.length - visiveis.length,
+    };
+  }, [ads, status, soAtivos]);
 
   // Classificação ADSUP automática: assim que o período carrega, classifica
   // sozinho o que ainda falta em creative_classifications (pula o resto) e
@@ -313,6 +351,22 @@ export default function TopCreativos() {
               {batchRunning ? `Classificando ${batchDone}/${batchTotal}` : "Classificar em lote"}
             </button>
 
+            <button
+              type="button"
+              onClick={() => setSoAtivos((v) => !v)}
+              title={soAtivos
+                ? "Mostrando só o que está no ar. Clique para incluir pausados e encerrados."
+                : "Mostrando tudo do período, inclusive pausados."}
+              className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-colors ${
+                soAtivos
+                  ? "border-accent/50 bg-accent/10 text-accent"
+                  : "border-gray-700 bg-gray-800 text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              <Power size={12} />
+              {soAtivos ? "Só ativos" : "Todos"}
+            </button>
+
             <div className="hidden md:block w-px h-4 bg-gray-700" />
 
             <span className="hidden sm:inline text-xs text-gray-500 whitespace-nowrap">Ordenar por</span>
@@ -355,7 +409,10 @@ export default function TopCreativos() {
           ))}
 
           <span className="ml-auto pl-3 pr-2 md:pr-5 text-xs text-gray-600 self-center whitespace-nowrap">
-            {loading ? "…" : `${ads.length} criativo${ads.length !== 1 ? "s" : ""}`}
+            {loading
+              ? "…"
+              : `${totalVisivel} criativo${totalVisivel !== 1 ? "s" : ""}` +
+                (ocultos > 0 ? ` · ${ocultos} fora do ar` : "")}
           </span>
         </div>
 
@@ -365,25 +422,57 @@ export default function TopCreativos() {
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
               {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
-          ) : ads.length === 0 ? (
+          ) : totalVisivel === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <Trophy size={32} className="text-gray-700" />
-              <p className="text-sm font-medium text-gray-500">Nenhum criativo no período</p>
-              <p className="text-xs text-gray-600">Selecione um período mais amplo ou sincronize os dados em Configurações.</p>
+              <p className="text-sm font-medium text-gray-500">
+                {ocultos > 0 ? "Nenhum criativo no ar neste período" : "Nenhum criativo no período"}
+              </p>
+              <p className="text-xs text-gray-600">
+                {ocultos > 0
+                  ? `${ocultos} criativo${ocultos !== 1 ? "s foram pausados" : " foi pausado"} ou encerrado${ocultos !== 1 ? "s" : ""}.`
+                  : "Selecione um período mais amplo ou sincronize os dados em Configurações."}
+              </p>
+              {ocultos > 0 && (
+                <button type="button" onClick={() => setSoAtivos(false)}
+                  className="text-xs text-accent hover:underline">
+                  Mostrar os pausados
+                </button>
+              )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-              {ads.map((ad, idx) => (
-                <CreativeCard
-                  key={ad.ad_id ?? ad.id}
-                  ad={ad}
-                  rank={idx + 1}
-                  tab={activeTab}
-                  products={products}
-                  benchMap={benchMap}
-                  real={funilReal?.get(ad.ad_id)}
-                  onClick={() => setSelectedAd(ad)}
-                />
+            <div className="space-y-6 md:space-y-7">
+              {grupos.map((g) => (
+                <section key={g.id}>
+                  {/* Cabeçalho da campanha */}
+                  <div className="flex items-center gap-2.5 mb-3 pb-2 border-b border-gray-800">
+                    <Megaphone size={14} className={g.ativa ? "text-accent" : "text-gray-600"} />
+                    <h3 className="text-sm font-bold text-white truncate">{g.nome}</h3>
+                    {!g.ativa && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-800 text-gray-500 shrink-0">
+                        pausada
+                      </span>
+                    )}
+                    <span className="ml-auto text-[11px] text-gray-600 whitespace-nowrap shrink-0">
+                      {g.ads.length} criativo{g.ads.length !== 1 ? "s" : ""} · {fmtVal(g.spend, "currency")}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+                    {g.ads.map((ad, idx) => (
+                      <CreativeCard
+                        key={ad.ad_id ?? ad.id}
+                        ad={ad}
+                        rank={idx + 1}
+                        tab={activeTab}
+                        products={products}
+                        benchMap={benchMap}
+                        real={funilReal?.get(ad.ad_id)}
+                        onClick={() => setSelectedAd(ad)}
+                      />
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           )}
