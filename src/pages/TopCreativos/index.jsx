@@ -209,6 +209,7 @@ export default function TopCreativos() {
   const [activeTab,  setActiveTab]  = useState("vendas");
   const [selectedAd, setSelectedAd] = useState(null);
   const [soAtivos,   setSoAtivos]   = useState(true);
+  const [campanhaSel, setCampanhaSel] = useState("todas");
 
   const { addToast } = useToast();
 
@@ -267,14 +268,18 @@ export default function TopCreativos() {
   // Agrupa por campanha, escondendo o que não está no ar.
   // O anúncio de uma campanha pausada já vem como CAMPAIGN_PAUSED da Meta,
   // então o filtro por anúncio sozinho resolve os dois níveis.
-  const { grupos, totalVisivel, ocultos } = useMemo(() => {
-    const visiveis = soAtivos
+  const { grupos, totalVisivel, ocultos, campanhas } = useMemo(() => {
+    const noAr = soAtivos
       ? ads.filter((a) => estaAtivo(status?.porAd?.get(a.ad_id)))
       : ads;
 
+    const idDe = (ad) => ad.campaign_id ?? "sem-campanha";
+
+    // Monta os grupos a partir de tudo que está visível, para o seletor
+    // listar as campanhas mesmo quando uma delas está filtrada.
     const mapa = new Map();
-    for (const ad of visiveis) {
-      const id = ad.campaign_id ?? "sem-campanha";
+    for (const ad of noAr) {
+      const id = idDe(ad);
       if (!mapa.has(id)) {
         const c = status?.porCampanha?.get(id);
         mapa.set(id, {
@@ -290,12 +295,22 @@ export default function TopCreativos() {
       g.spend += Number(ad.spend) || 0;
     }
 
+    const todos = [...mapa.values()].sort((a, b) => b.spend - a.spend);
+
+    // Campanha escolhida pode ter sumido ao alternar "só ativos" — nesse
+    // caso volta a mostrar todas em vez de deixar a tela vazia sem motivo.
+    const existe = todos.some((g) => g.id === campanhaSel);
+    const filtrados = campanhaSel !== "todas" && existe
+      ? todos.filter((g) => g.id === campanhaSel)
+      : todos;
+
     return {
-      grupos: [...mapa.values()].sort((a, b) => b.spend - a.spend),
-      totalVisivel: visiveis.length,
-      ocultos: ads.length - visiveis.length,
+      grupos: filtrados,
+      campanhas: todos,
+      totalVisivel: filtrados.reduce((n, g) => n + g.ads.length, 0),
+      ocultos: ads.length - noAr.length,
     };
-  }, [ads, status, soAtivos]);
+  }, [ads, status, soAtivos, campanhaSel]);
 
   // Classificação ADSUP automática: assim que o período carrega, classifica
   // sozinho o que ainda falta em creative_classifications (pula o resto) e
@@ -350,6 +365,23 @@ export default function TopCreativos() {
                 : <Tags size={12} />}
               {batchRunning ? `Classificando ${batchDone}/${batchTotal}` : "Classificar em lote"}
             </button>
+
+            <select
+              value={campanhaSel}
+              onChange={(e) => setCampanhaSel(e.target.value)}
+              title="Filtrar por campanha"
+              className="h-9 md:h-8 max-w-[13rem] rounded-lg border border-gray-700 bg-gray-800 px-2.5 text-xs text-gray-200
+                         focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
+            >
+              <option value="todas">
+                Todas as campanhas{campanhas.length ? ` (${campanhas.length})` : ""}
+              </option>
+              {campanhas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}{c.ativa ? "" : " · pausada"} — {c.ads.length}
+                </option>
+              ))}
+            </select>
 
             <button
               type="button"
