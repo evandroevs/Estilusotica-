@@ -121,9 +121,23 @@ export async function resolveCapiConnection(
 
 /* ─── Envio do evento ───────────────────────────────────────────────────── */
 
+/**
+ * Nome do evento enviado à Meta.
+ *
+ * `Purchase` é o evento padrão: é ELE que a Meta soma na coluna "Compras" da
+ * campanha. `CompraLoja` é evento customizado — alimenta o dataset (público
+ * semelhante, aprendizado) mas nunca aparece como resultado de campanha.
+ *
+ * Venda que a loja diz não ter vindo de anúncio vai como CompraLoja: o dado
+ * não se perde e a campanha não leva crédito que não é dela.
+ */
+export const EVENTO_COM_ANUNCIO = "Purchase";
+export const EVENTO_SEM_ANUNCIO = "CompraLoja";
+
 export interface VendaLoja {
   eventId: string;          // estável por lead → a Meta deduplica sozinha
   eventTime: number;        // unix em segundos
+  eventName?: string;       // default: Purchase
   valor: number;
   moeda?: string;
   ctwaClid?: string | null;
@@ -182,7 +196,7 @@ export async function enviarVendaLoja(
   }
 
   const evento: Record<string, unknown> = {
-    event_name: "Purchase",
+    event_name: venda.eventName ?? EVENTO_COM_ANUNCIO,
     event_time: venda.eventTime,
     event_id: venda.eventId,
     action_source: atribuidoAoAnuncio ? "business_messaging" : "physical_store",

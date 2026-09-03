@@ -36,7 +36,8 @@ const META = {
   enviado:       { label: "Meta avisada",      cor: "#4ADE80", icon: CheckCircle2 },
   pendente:      { label: "Não sinalizada",    cor: "#FBBF24", icon: Send },
   erro:          { label: "Falha ao sinalizar", cor: "#F87171", icon: AlertTriangle },
-  nao_aplicavel: { label: "Venda avulsa",      cor: "#9CA3AF", icon: Store },
+  // Estado herdado: vendas registradas antes de toda venda passar a ir ao pixel.
+  nao_aplicavel: { label: "Não enviada",       cor: "#9CA3AF", icon: Store },
 };
 
 /**
@@ -399,15 +400,20 @@ function CardNotaFiscal({ leadsAbertos }) {
    * fica marcada como avulsa para nunca ser enviada à Meta (sinalizar uma
    * compra que a campanha não gerou envenena o otimizador).
    */
-  async function registrarSemLead(valor, documentoUrl, extraido, { avisarMeta }) {
+  /**
+   * Toda venda vai para a Meta. A diferença é o NOME do evento: a que veio de
+   * anúncio sai como Purchase e conta na campanha; a que não veio sai como
+   * evento customizado, alimentando o pixel sem creditar a campanha.
+   */
+  async function registrarSemLead(valor, documentoUrl, extraido, { veioDeAnuncio }) {
     const { data: userData } = await supabase.auth.getUser();
     const { data: novo, error } = await supabase.from("leads").insert({
       nome: extraido?.nome?.trim() || "Cliente da loja",
       telefone: extraido?.telefone ?? null,
       origem: "outro",
       status: "vendido",
-      avulsa: !avisarMeta,
-      meta_status: avisarMeta ? "pendente" : "nao_aplicavel",
+      avulsa: !veioDeAnuncio,
+      meta_status: "pendente",
       valor_venda: valor,
       produto: extraido?.produto ?? null,
       vendido_em: new Date().toISOString(),
@@ -416,16 +422,12 @@ function CardNotaFiscal({ leadsAbertos }) {
     }).select("id").single();
     if (error) throw error;
 
-    // Sem ctwa_clid a Meta casa pelo telefone hasheado — atribuição mais fraca
-    // que o clique, mas é o possível enquanto o WhatsApp não está ligado.
-    if (avisarMeta) {
-      if (!extraido?.telefone) {
-        addToast("Venda registrada, mas sem telefone na ordem a Meta não tem como casar o cliente.", "error");
-      } else {
-        const meta = await sinalizarMeta(novo.id);
-        if (!meta.ok) {
-          addToast(`Venda registrada, mas a Meta não recebeu: ${meta.erro ?? "erro desconhecido"}.`, "error");
-        }
+    if (!extraido?.telefone) {
+      addToast("Venda registrada, mas sem telefone na ordem a Meta não tem como casar o cliente.", "error");
+    } else {
+      const meta = await sinalizarMeta(novo.id);
+      if (!meta.ok) {
+        addToast(`Venda registrada, mas a Meta não recebeu: ${meta.erro ?? "erro desconhecido"}.`, "error");
       }
     }
     qc.invalidateQueries({ queryKey: ["leads"] });
@@ -542,16 +544,16 @@ function CardNotaFiscal({ leadsAbertos }) {
         // quem está atendendo: sobra a pergunta que importa, veio de anúncio ou não.
         const temLista = opcoes.length > 0;
 
-        const registrar = (avisarMeta) => async () => {
+        const registrar = (veioDeAnuncio) => async () => {
           setSalvando(true);
           try {
             await registrarSemLead(valorNum, nf.notaUrl, {
               ...nf.extraido,
               produto: produtoManual.trim() || nf.extraido?.produto || null,
-            }, { avisarMeta });
-            addToast(avisarMeta
-              ? "Venda registrada e enviada à Meta. 🎉"
-              : "Venda avulsa registrada (não foi enviada à Meta).");
+            }, { veioDeAnuncio });
+            addToast(veioDeAnuncio
+              ? "Venda registrada e creditada ao anúncio na Meta. 🎉"
+              : "Venda registrada. Foi para o pixel, sem contar na campanha.");
             reset();
           } catch (err) { addToast(err.message ?? String(err), "error"); setSalvando(false); }
         };
@@ -605,6 +607,11 @@ function CardNotaFiscal({ leadsAbertos }) {
             className="w-full py-3.5 rounded-xl border border-gray-700 text-gray-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:border-gray-500 transition-colors disabled:opacity-40">
             <Store size={15} /> Não veio de anúncio
           </button>
+
+          <p className="text-[10px] text-gray-600 text-center leading-relaxed px-2">
+            As duas opções mandam a venda para o pixel. Só a de cima conta como
+            resultado da campanha.
+          </p>
 
           {/* Escolher um lead da lista continua possível, mas fora do caminho principal */}
           {temLista && (

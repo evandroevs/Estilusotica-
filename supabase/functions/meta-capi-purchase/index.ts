@@ -13,7 +13,10 @@
  * Um lead já com meta_status='enviado' nem chega a sair daqui de novo.
  */
 import { resolveTenant, CORS_HEADERS, jsonResponse } from "../_shared/tenant.ts";
-import { resolveCapiConnection, enviarVendaLoja, CapiError } from "../_shared/metaCapi.ts";
+import {
+  resolveCapiConnection, enviarVendaLoja, CapiError,
+  EVENTO_COM_ANUNCIO, EVENTO_SEM_ANUNCIO,
+} from "../_shared/metaCapi.ts";
 
 interface Lead {
   id: string;
@@ -34,7 +37,6 @@ interface Lead {
 function bloqueio(lead: Lead): string | null {
   if (lead.status !== "vendido") return "Lead não está marcado como vendido.";
   if (!(Number(lead.valor_venda) > 0)) return "Venda sem valor — a Meta precisa do valor da compra.";
-  if (lead.avulsa) return "Venda avulsa (não veio de anúncio).";
   return null;
 }
 
@@ -66,7 +68,7 @@ Deno.serve(async (req) => {
 
     query = body.lead_id
       ? query.eq("id", body.lead_id)
-      : query.eq("status", "vendido").eq("avulsa", false)
+      : query.eq("status", "vendido")
              .in("meta_status", ["pendente", "erro"]).limit(50);
 
     const { data: leads, error } = await query;
@@ -91,16 +93,20 @@ Deno.serve(async (req) => {
       const motivo = bloqueio(lead);
       if (motivo) {
         await ctx.admin.from("leads").update({
-          meta_status: lead.avulsa ? "nao_aplicavel" : "erro",
+          meta_status: "erro",
           meta_erro: motivo,
         }).eq("id", lead.id);
         resultados.push({ lead_id: lead.id, ok: false, erro: motivo });
         continue;
       }
 
+      // Venda que a loja marcou como "não veio de anúncio" vai com nome de
+      // evento customizado: entra no dataset, não entra na coluna Compras
+      // da campanha — a campanha só leva crédito do que ela gerou.
       const r = await enviarVendaLoja(conn, {
         eventId: `venda-${lead.id}`,
         eventTime: Math.floor(new Date(lead.vendido_em ?? Date.now()).getTime() / 1000),
+        eventName: lead.avulsa ? EVENTO_SEM_ANUNCIO : EVENTO_COM_ANUNCIO,
         valor: Number(lead.valor_venda),
         ctwaClid: lead.ctwa_clid,
         telefone: lead.telefone,
@@ -131,6 +137,7 @@ Deno.serve(async (req) => {
         lead_id: lead.id,
         ok: r.ok,
         atribuido_ao_anuncio: r.atribuidoAoAnuncio,
+        evento: lead.avulsa ? EVENTO_SEM_ANUNCIO : EVENTO_COM_ANUNCIO,
         ...(erro ? { erro } : {}),
       });
     }
