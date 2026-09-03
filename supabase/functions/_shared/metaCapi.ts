@@ -187,10 +187,13 @@ export async function enviarVendaLoja(
   if (fn) user_data.fn = [await sha256(fn)];
   if (ln) user_data.ln = [await sha256(ln)];
 
-  if (!Object.keys(user_data).length) {
+  // Nome sozinho não identifica ninguém: a Meta aceita o POST e depois recusa
+  // o evento com "combinação de parâmetros muito ampla". Melhor falhar aqui,
+  // com uma mensagem que diz o que fazer, do que guardar o erro dela.
+  if (!atribuidoAoAnuncio && !user_data.ph && !user_data.em) {
     return {
       ok: false,
-      erro: "Venda sem nenhum dado de identificação (nem clique do anúncio, nem telefone) — a Meta não teria como casar.",
+      erro: "Venda sem telefone nem e-mail do cliente — a Meta recusa o evento, porque só o nome não identifica ninguém.",
       atribuidoAoAnuncio: false,
     };
   }
