@@ -106,6 +106,10 @@ Deno.serve(async (req) => {
                     "Regras:\n" +
                     "- telefone = telefone do CLIENTE. Ignore o telefone da loja, que costuma aparecer " +
                     "no cabeçalho junto do CNPJ, do logotipo ou do endereço.\n" +
+                    "- telefone SEMPRE com DDD. Ordem de serviço costuma trazer o número do cliente " +
+                    "sem DDD porque é da mesma cidade: se o número do cliente vier com 8 ou 9 dígitos, " +
+                    "complete com o DDD do telefone da LOJA (o do cabeçalho) ou do endereço dela. " +
+                    "Sem DDD o número é inútil e a venda se perde.\n" +
                     "- valor = valor TOTAL da venda em reais, já com descontos. Se houver entrada e " +
                     "saldo, use o total da ordem, não a entrada.\n" +
                     "- produto = o que foi vendido em poucas palavras (ex.: 'armação + lentes multifocais', " +
