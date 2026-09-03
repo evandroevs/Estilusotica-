@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Users, ShoppingBag, Percent, DollarSign, Camera, CheckCircle2,
+  Users, ShoppingBag, Percent, Camera, CheckCircle2,
   XCircle, X, Loader2, MessageCircle, Phone, ChevronLeft,
   Send, AlertTriangle, Store, Megaphone, FileText,
 } from "lucide-react";
@@ -841,7 +841,6 @@ export default function Trackeamento() {
     const all = leads ?? [];
     const hoje = all.filter((l) => ehHoje(l.iniciado_em));
     const vendasHoje = all.filter((l) => l.status === "vendido" && l.vendido_em && ehHoje(l.vendido_em));
-    const valorHoje = vendasHoje.reduce((s, l) => s + (+l.valor_venda || 0), 0);
     const pendentes = all.filter(
       (l) => l.status === "vendido" && !l.avulsa &&
         (l.meta_status === "pendente" || l.meta_status === "erro")
@@ -859,7 +858,6 @@ export default function Trackeamento() {
         leadsHoje: hoje.length,
         vendasHoje: vendasHoje.length,
         taxa: hoje.length > 0 ? (hoje.filter((l) => l.status === "vendido").length / hoje.length) * 100 : null,
-        valorHoje,
       },
       visiveis: filtro === "todos" ? emAberto : emAberto.filter((l) => l.status === filtro),
     };
@@ -868,11 +866,12 @@ export default function Trackeamento() {
   return (
     <div className="space-y-5">
       {/* KPIs de hoje */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Sem valor de venda aqui: a tela fica aberta no balcão o dia todo.
+          O faturamento está no Relatório de vendas, atrás de um clique. */}
+      <div className="grid grid-cols-3 gap-4">
         <KpiHoje icon={Users}       label="Leads Hoje"        value={kpis.leadsHoje} color="#60A5FA" />
         <KpiHoje icon={ShoppingBag} label="Vendas Hoje"       value={kpis.vendasHoje} color="#4ADE80" />
         <KpiHoje icon={Percent}     label="Taxa de Conversão" value={kpis.taxa == null ? "—" : kpis.taxa.toFixed(0) + "%"} color="#A78BFA" />
-        <KpiHoje icon={DollarSign}  label="Valor Vendido Hoje" value={BRL(kpis.valorHoje)} color="#C8FF00" />
       </div>
 
       <AvisoPendentes pendentes={pendentes} />
