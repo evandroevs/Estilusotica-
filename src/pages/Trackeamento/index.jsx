@@ -79,8 +79,6 @@ const FILTROS = [
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
-const BRL = (v) => (v == null || isNaN(v) ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 }).format(v));
-
 function ehHoje(iso) {
   return new Date(iso).toDateString() === new Date().toDateString();
 }
@@ -235,7 +233,7 @@ function LeadDrawer({ lead, onClose }) {
             <Info label="Anúncio">{lead.anuncio === "exemplo" ? "—" : lead.anuncio}</Info>
             {lead.vendedor && <Info label="Vendedor">{lead.vendedor}</Info>}
             {lead.produto && <Info label="Produto">{lead.produto}</Info>}
-            {lead.status === "vendido" && <Info label="Valor da venda">{BRL(+lead.valor_venda)}</Info>}
+            {lead.status === "vendido" && <Info label="Venda">registrada</Info>}
             <Info label="Atribuição">
               {lead.ctwa_clid ? (
                 <span className="inline-flex items-center gap-1 text-green-400">
@@ -519,8 +517,8 @@ function CardNotaFiscal({ leadsAbertos }) {
           <div className="flex items-center gap-2.5">
             <CheckCircle2 size={18} className="text-green-400 shrink-0" />
             <p className="text-sm text-green-300">
-              Venda de <span className="font-bold">{BRL(nf.valor)}</span> registrada para{" "}
-              <span className="font-bold">{nf.lead.nome}</span> — telefone conferido pela ordem.
+              Venda registrada para <span className="font-bold">{nf.lead.nome}</span> —
+              telefone conferido pela ordem.
             </p>
           </div>
           <p className="mt-2 pl-7 text-[11px] leading-relaxed">
@@ -713,13 +711,12 @@ function AvisoPendentes({ pendentes }) {
  * Aqui é acesso deliberado — quem quer o número, abre.
  */
 function RelatorioVendas({ vendas, onClose }) {
-  const total = vendas.reduce((s, l) => s + (+l.valor_venda || 0), 0);
   const doMes = vendas.filter((l) => {
     if (!l.vendido_em) return false;
     const d = new Date(l.vendido_em), h = new Date();
     return d.getMonth() === h.getMonth() && d.getFullYear() === h.getFullYear();
   });
-  const totalMes = doMes.reduce((s, l) => s + (+l.valor_venda || 0), 0);
+  const enviadas = vendas.filter((l) => l.meta_status === "enviado").length;
 
   return (
     <>
@@ -739,16 +736,18 @@ function RelatorioVendas({ vendas, onClose }) {
           </button>
         </div>
 
+        {/* Sem valores: o relatório serve para conferir se a venda foi
+            sinalizada, não para expor faturamento numa tela da loja. */}
         <div className="grid grid-cols-2 gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-600">Total no período</p>
-            <p className="text-xl font-bold text-white">{BRL(total)}</p>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Este mês</p>
+            <p className="text-xl font-bold text-white">
+              {doMes.length} venda{doMes.length !== 1 ? "s" : ""}
+            </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-gray-600">
-              Este mês · {doMes.length} venda{doMes.length !== 1 ? "s" : ""}
-            </p>
-            <p className="text-xl font-bold text-accent">{BRL(totalMes)}</p>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Sinalizadas à Meta</p>
+            <p className="text-xl font-bold text-accent">{enviadas} de {vendas.length}</p>
           </div>
         </div>
 
@@ -764,8 +763,7 @@ function RelatorioVendas({ vendas, onClose }) {
                 <tr className="text-[10px] uppercase tracking-wide text-gray-600 border-b border-gray-800">
                   <th className="text-left font-semibold px-5 py-2.5">Cliente</th>
                   <th className="text-left font-semibold px-3 py-2.5 hidden md:table-cell">Produto</th>
-                  <th className="text-left font-semibold px-3 py-2.5 hidden sm:table-cell">Quando</th>
-                  <th className="text-right font-semibold px-3 py-2.5">Valor</th>
+                  <th className="text-left font-semibold px-3 py-2.5">Quando</th>
                   <th className="text-center font-semibold px-5 py-2.5">Meta</th>
                 </tr>
               </thead>
@@ -782,11 +780,8 @@ function RelatorioVendas({ vendas, onClose }) {
                         {l.telefone && <p className="text-[11px] text-gray-600">{l.telefone}</p>}
                       </td>
                       <td className="px-3 py-3 text-gray-400 text-xs hidden md:table-cell">{l.produto ?? "—"}</td>
-                      <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap hidden sm:table-cell">
+                      <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
                         {l.vendido_em ? quando(l.vendido_em) : "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right font-bold text-green-400 tabular-nums whitespace-nowrap">
-                        {BRL(+l.valor_venda)}
                       </td>
                       <td className="px-5 py-3 text-center">
                         <m.icon size={14} style={{ color: m.cor }} className="inline" title={m.label} />
@@ -932,13 +927,6 @@ export default function Trackeamento() {
                     {l.avulsa ? `venda na loja ${quando(l.iniciado_em)}` : `WhatsApp iniciado ${quando(l.iniciado_em)}`}
                   </p>
                 </div>
-                {l.status === "vendido" && +l.valor_venda > 0 && (
-                  <span className="text-xs font-bold text-green-400 tabular-nums shrink-0">{BRL(+l.valor_venda)}</span>
-                )}
-                {l.status === "vendido" && (() => {
-                  const m = META[l.meta_status] ?? META.pendente;
-                  return <m.icon size={13} style={{ color: m.cor }} className="shrink-0" title={m.label} />;
-                })()}
                 <StatusBadge status={l.status} />
               </button>
             );
