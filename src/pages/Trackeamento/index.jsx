@@ -706,6 +706,37 @@ function AvisoPendentes({ pendentes }) {
 /* ─── Relatório de vendas (fora da tela do balcão) ───────────────────────── */
 
 /**
+ * De onde veio a venda, em três níveis de confiança:
+ *   clique   — ctwa_clid capturado do anúncio, é fato, não opinião
+ *   anúncio  — a vendedora respondeu que o cliente veio de anúncio
+ *   loja     — a vendedora respondeu que não veio
+ *
+ * A distinção entre os dois primeiros importa: um é medição, o outro é
+ * memória de quem estava no balcão.
+ */
+function OrigemBadge({ lead }) {
+  if (lead.ctwa_clid) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/15 text-accent whitespace-nowrap">
+        <Megaphone size={10} /> Anúncio · clique
+      </span>
+    );
+  }
+  if (!lead.avulsa) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/10 text-green-400 whitespace-nowrap">
+        <Megaphone size={10} /> Anúncio
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-800 text-gray-400 whitespace-nowrap">
+      <Store size={10} /> Loja
+    </span>
+  );
+}
+
+/**
  * As vendas não aparecem na lista principal: a tela fica aberta no caixa e
  * mostraria nome, telefone e valor de cada cliente para quem passasse ali.
  * Aqui é acesso deliberado — quem quer o número, abre.
@@ -717,6 +748,7 @@ function RelatorioVendas({ vendas, onClose }) {
     return d.getMonth() === h.getMonth() && d.getFullYear() === h.getFullYear();
   });
   const enviadas = vendas.filter((l) => l.meta_status === "enviado").length;
+  const deAnuncio = vendas.filter((l) => !l.avulsa).length;
 
   return (
     <>
@@ -738,7 +770,7 @@ function RelatorioVendas({ vendas, onClose }) {
 
         {/* Sem valores: o relatório serve para conferir se a venda foi
             sinalizada, não para expor faturamento numa tela da loja. */}
-        <div className="grid grid-cols-2 gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
+        <div className="grid grid-cols-3 gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
           <div>
             <p className="text-[10px] uppercase tracking-wide text-gray-600">Este mês</p>
             <p className="text-xl font-bold text-white">
@@ -746,8 +778,12 @@ function RelatorioVendas({ vendas, onClose }) {
             </p>
           </div>
           <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">De anúncio</p>
+            <p className="text-xl font-bold text-accent">{deAnuncio} de {vendas.length}</p>
+          </div>
+          <div>
             <p className="text-[10px] uppercase tracking-wide text-gray-600">Sinalizadas à Meta</p>
-            <p className="text-xl font-bold text-accent">{enviadas} de {vendas.length}</p>
+            <p className="text-xl font-bold text-white">{enviadas} de {vendas.length}</p>
           </div>
         </div>
 
@@ -763,6 +799,7 @@ function RelatorioVendas({ vendas, onClose }) {
                 <tr className="text-[10px] uppercase tracking-wide text-gray-600 border-b border-gray-800">
                   <th className="text-left font-semibold px-5 py-2.5">Cliente</th>
                   <th className="text-left font-semibold px-3 py-2.5 hidden md:table-cell">Produto</th>
+                  <th className="text-left font-semibold px-3 py-2.5">Origem</th>
                   <th className="text-left font-semibold px-3 py-2.5">Quando</th>
                   <th className="text-center font-semibold px-5 py-2.5">Meta</th>
                 </tr>
@@ -780,6 +817,9 @@ function RelatorioVendas({ vendas, onClose }) {
                         {l.telefone && <p className="text-[11px] text-gray-600">{l.telefone}</p>}
                       </td>
                       <td className="px-3 py-3 text-gray-400 text-xs hidden md:table-cell">{l.produto ?? "—"}</td>
+                      <td className="px-3 py-3">
+                        <OrigemBadge lead={l} />
+                      </td>
                       <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
                         {l.vendido_em ? quando(l.vendido_em) : "—"}
                       </td>
