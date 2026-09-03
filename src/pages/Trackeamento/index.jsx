@@ -16,7 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users, ShoppingBag, Percent, DollarSign, Camera, CheckCircle2,
   XCircle, X, Loader2, MessageCircle, Phone, ChevronLeft,
-  Send, AlertTriangle, Store, Megaphone,
+  Send, AlertTriangle, Store, Megaphone, FileText,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../context/ToastContext";
@@ -67,11 +67,12 @@ const MOTIVOS = [
   { v: "outro",               label: "Outro" },
 ];
 
+// "Vendidos" saiu daqui de propósito: nome e valor de cliente não ficam
+// expostos na tela do balcão. Quem precisa vê pelo botão Relatório de vendas.
 const FILTROS = [
-  { v: "todos", label: "Todos" },
+  { v: "todos", label: "Em aberto" },
   { v: "em_atendimento", label: "Em atendimento" },
   { v: "aguardando", label: "Aguardando" },
-  { v: "vendido", label: "Vendidos" },
   { v: "nao_comprou", label: "Não comprou" },
 ];
 
@@ -697,12 +698,111 @@ function AvisoPendentes({ pendentes }) {
   );
 }
 
+/* ─── Relatório de vendas (fora da tela do balcão) ───────────────────────── */
+
+/**
+ * As vendas não aparecem na lista principal: a tela fica aberta no caixa e
+ * mostraria nome, telefone e valor de cada cliente para quem passasse ali.
+ * Aqui é acesso deliberado — quem quer o número, abre.
+ */
+function RelatorioVendas({ vendas, onClose }) {
+  const total = vendas.reduce((s, l) => s + (+l.valor_venda || 0), 0);
+  const doMes = vendas.filter((l) => {
+    if (!l.vendido_em) return false;
+    const d = new Date(l.vendido_em), h = new Date();
+    return d.getMonth() === h.getMonth() && d.getFullYear() === h.getFullYear();
+  });
+  const totalMes = doMes.reduce((s, l) => s + (+l.valor_venda || 0), 0);
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/70 z-40" onClick={onClose} />
+      <div className="fixed z-50 inset-0 sm:inset-8 lg:inset-x-32 lg:inset-y-16 bg-gray-950 sm:rounded-2xl sm:border border-gray-800 flex flex-col overflow-hidden">
+
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
+          <FileText size={18} className="text-accent" />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-white font-bold text-base">Relatório de vendas</h3>
+            <p className="text-[11px] text-gray-500">
+              {vendas.length} venda{vendas.length !== 1 ? "s" : ""} registrada{vendas.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 px-5 py-4 border-b border-gray-800 shrink-0">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">Total no período</p>
+            <p className="text-xl font-bold text-white">{BRL(total)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-gray-600">
+              Este mês · {doMes.length} venda{doMes.length !== 1 ? "s" : ""}
+            </p>
+            <p className="text-xl font-bold text-accent">{BRL(totalMes)}</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {!vendas.length ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-2">
+              <ShoppingBag size={28} className="text-gray-700" />
+              <p className="text-sm text-gray-500">Nenhuma venda registrada ainda.</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-gray-950">
+                <tr className="text-[10px] uppercase tracking-wide text-gray-600 border-b border-gray-800">
+                  <th className="text-left font-semibold px-5 py-2.5">Cliente</th>
+                  <th className="text-left font-semibold px-3 py-2.5 hidden md:table-cell">Produto</th>
+                  <th className="text-left font-semibold px-3 py-2.5 hidden sm:table-cell">Quando</th>
+                  <th className="text-right font-semibold px-3 py-2.5">Valor</th>
+                  <th className="text-center font-semibold px-5 py-2.5">Meta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendas.map((l) => {
+                  const m = META[l.meta_status] ?? META.pendente;
+                  return (
+                    <tr key={l.id} className="border-b border-gray-900 hover:bg-gray-900/50">
+                      <td className="px-5 py-3">
+                        <p className="text-gray-100 font-medium truncate flex items-center gap-1.5">
+                          {l.nome}
+                          {l.ctwa_clid && <Megaphone size={11} className="text-accent shrink-0" title="Veio de anúncio" />}
+                        </p>
+                        {l.telefone && <p className="text-[11px] text-gray-600">{l.telefone}</p>}
+                      </td>
+                      <td className="px-3 py-3 text-gray-400 text-xs hidden md:table-cell">{l.produto ?? "—"}</td>
+                      <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap hidden sm:table-cell">
+                        {l.vendido_em ? quando(l.vendido_em) : "—"}
+                      </td>
+                      <td className="px-3 py-3 text-right font-bold text-green-400 tabular-nums whitespace-nowrap">
+                        {BRL(+l.valor_venda)}
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <m.icon size={14} style={{ color: m.cor }} className="inline" title={m.label} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ─── Tela principal ─────────────────────────────────────────────────────── */
 
 export default function Trackeamento() {
   const qc = useQueryClient();
   const [filtro, setFiltro] = useState("todos");
   const [leadAberto, setLeadAberto] = useState(null);
+  const [verRelatorio, setVerRelatorio] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["leads"],
@@ -730,7 +830,7 @@ export default function Trackeamento() {
     return () => { supabase.removeChannel(canal); };
   }, [qc]);
 
-  const { kpis, visiveis, pendentes } = useMemo(() => {
+  const { kpis, visiveis, pendentes, vendas } = useMemo(() => {
     const all = leads ?? [];
     const hoje = all.filter((l) => ehHoje(l.iniciado_em));
     const vendasHoje = all.filter((l) => l.status === "vendido" && l.vendido_em && ehHoje(l.vendido_em));
@@ -739,15 +839,22 @@ export default function Trackeamento() {
       (l) => l.status === "vendido" && !l.avulsa &&
         (l.meta_status === "pendente" || l.meta_status === "erro")
     );
+    // Venda confirmada sai da lista: a tela fica aberta no balcão o dia todo
+    // e não deve mostrar quem comprou o quê para quem passa na frente dela.
+    const emAberto = all.filter((l) => l.status !== "vendido");
+
     return {
       pendentes,
+      vendas: all
+        .filter((l) => l.status === "vendido")
+        .sort((a, b) => new Date(b.vendido_em ?? 0) - new Date(a.vendido_em ?? 0)),
       kpis: {
         leadsHoje: hoje.length,
         vendasHoje: vendasHoje.length,
         taxa: hoje.length > 0 ? (hoje.filter((l) => l.status === "vendido").length / hoje.length) * 100 : null,
         valorHoje,
       },
-      visiveis: filtro === "todos" ? all : all.filter((l) => l.status === filtro),
+      visiveis: filtro === "todos" ? emAberto : emAberto.filter((l) => l.status === filtro),
     };
   }, [leads, filtro]);
 
@@ -766,7 +873,7 @@ export default function Trackeamento() {
       {/* Registrar venda pela ordem de serviço */}
       <CardNotaFiscal leadsAbertos={(leads ?? []).filter((l) => l.status === "em_atendimento" || l.status === "aguardando")} />
 
-      {/* Filtro por status */}
+      {/* Filtro por status + acesso ao relatório */}
       <div className="flex items-center gap-1 flex-wrap">
         {FILTROS.map((f) => (
           <button key={f.v} type="button" onClick={() => setFiltro(f.v)}
@@ -776,6 +883,15 @@ export default function Trackeamento() {
             {f.label}
           </button>
         ))}
+
+        <button type="button" onClick={() => setVerRelatorio(true)}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-700 text-xs font-semibold text-gray-300 hover:border-gray-500 hover:text-white transition-colors">
+          <FileText size={13} />
+          Relatório de vendas
+          {vendas.length > 0 && (
+            <span className="ml-0.5 px-1.5 rounded-full bg-gray-800 text-[10px] text-gray-400">{vendas.length}</span>
+          )}
+        </button>
       </div>
 
       {/* Lista de leads */}
@@ -786,8 +902,11 @@ export default function Trackeamento() {
       ) : !visiveis.length ? (
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-12 text-center">
           <MessageCircle size={28} className="mx-auto text-gray-700 mb-3" />
-          <p className="text-sm text-gray-400 font-medium">Nenhum lead por aqui ainda.</p>
-          <p className="text-xs text-gray-600 mt-1">Quando um cliente chamar no WhatsApp, ele aparece sozinho nesta lista.</p>
+          <p className="text-sm text-gray-400 font-medium">Nenhum atendimento em aberto.</p>
+          <p className="text-xs text-gray-600 mt-1">
+            Quando um cliente chamar no WhatsApp, ele aparece sozinho aqui.
+            {vendas.length > 0 && " Vendas confirmadas ficam no relatório."}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -819,6 +938,10 @@ export default function Trackeamento() {
             );
           })}
         </div>
+      )}
+
+      {verRelatorio && (
+        <RelatorioVendas vendas={vendas} onClose={() => setVerRelatorio(false)} />
       )}
 
       {leadAberto && (
