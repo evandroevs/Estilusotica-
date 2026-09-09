@@ -49,17 +49,18 @@ export async function sha256(valor: string): Promise<string> {
  * que sai do WhatsApp das lojas.
  */
 export function normalizarTelefone(bruto: string | null | undefined): string | null {
-  let d = (bruto ?? "").replace(/\D/g, "");
+  const d = (bruto ?? "").replace(/\D/g, "");
   if (!d) return null;
 
   // 8 ou 9 dígitos = número solto sem DDD: não dá para inferir a região.
   if (d.length <= 9) return null;
 
-  if (!d.startsWith("55")) d = "55" + d;
-
-  // 55 + DDD(2) + 8 ou 9 dígitos
-  if (d.length < 12 || d.length > 13) return null;
-  return d;
+  // Decide pelo TAMANHO, não pelo prefixo: DDD 55 existe (Santa Maria/RS), e
+  // (55) 9911-2233 começa com "55" sem ter código de país. Testar o prefixo
+  // fazia esse número ser descartado como inválido.
+  if (d.length === 10 || d.length === 11) return "55" + d;      // local → prefixa
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return d;
+  return null;
 }
 
 /** E-mail normalizado: minúsculo e sem espaços em volta. */

@@ -363,9 +363,11 @@ function CardNotaFiscal({ leadsAbertos }) {
   const [leadEscolhido, setLeadEscolhido] = useState("");
   const [valorManual, setValorManual] = useState("");
   const [produtoManual, setProdutoManual] = useState("");
+  const [telefoneManual, setTelefoneManual] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   const reset = () => {
+    setTelefoneManual("");
     setNf({ fase: "idle" });
     setLeadEscolhido(""); setValorManual(""); setProdutoManual(""); setSalvando(false);
   };
@@ -407,7 +409,7 @@ function CardNotaFiscal({ leadsAbertos }) {
     const { data: userData } = await supabase.auth.getUser();
     const { data: novo, error } = await supabase.from("leads").insert({
       nome: extraido?.nome?.trim() || "Cliente da loja",
-      telefone: extraido?.telefone ?? null,
+      telefone: extraido?.telefone ?? null,   // já vem do campo, validado na tela
       origem: "outro",
       status: "vendido",
       avulsa: !veioDeAnuncio,
@@ -470,6 +472,7 @@ function CardNotaFiscal({ leadsAbertos }) {
       if (candidatos?.length) setLeadEscolhido(candidatos[0].id);
       if (extraido?.valor > 0) setValorManual(String(extraido.valor).replace(".", ","));
       if (extraido?.produto) setProdutoManual(extraido.produto);
+      if (extraido?.telefone) setTelefoneManual(extraido.telefone);
     } catch (err) {
       addToast(err.message ?? String(err), "error");
       reset();
@@ -484,6 +487,19 @@ function CardNotaFiscal({ leadsAbertos }) {
         ja_vendido: l.status === "vendido",
       }));
   const valorNum = Number(valorManual.replace(/\./g, "").replace(",", "."));
+
+  // A Meta precisa de telefone (ou e-mail) para achar a pessoa; só nome ela
+  // recusa. E telefone sem DDD nunca casa — a impressão digital sai diferente.
+  // Por isso o campo é obrigatório e exige DDD antes de deixar registrar.
+  // Tira o 55 só quando ele é mesmo código de país: DDD 55 existe (Santa
+  // Maria/RS), e cortar às cegas transformaria (55) 9911-2233 em número curto.
+  const telBruto   = telefoneManual.replace(/\D/g, "");
+  const telDigitos = telBruto.length >= 12 && telBruto.startsWith("55")
+    ? telBruto.slice(2)
+    : telBruto;
+  const telefoneOk = telDigitos.length === 10 || telDigitos.length === 11;
+  const telSemDDD  = telDigitos.length === 8 || telDigitos.length === 9;
+  const podeRegistrar = valorNum > 0 && telefoneOk && !salvando;
 
   return (
     <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
@@ -547,6 +563,7 @@ function CardNotaFiscal({ leadsAbertos }) {
           try {
             await registrarSemLead(valorNum, nf.notaUrl, {
               ...nf.extraido,
+              telefone: telefoneManual.trim(),
               produto: produtoManual.trim() || nf.extraido?.produto || null,
             }, { veioDeAnuncio });
             addToast(veioDeAnuncio
@@ -581,6 +598,30 @@ function CardNotaFiscal({ leadsAbertos }) {
             )}
           </p>
 
+          <div>
+            <input
+              type="tel" inputMode="tel" placeholder="Telefone do cliente com DDD"
+              value={telefoneManual}
+              onChange={(e) => setTelefoneManual(e.target.value)}
+              className={`w-full h-11 rounded-xl border bg-gray-950 px-3 text-sm text-gray-200
+                          focus:outline-none focus:ring-2 focus:ring-accent/40 ${
+                            telefoneManual && !telefoneOk ? "border-amber-700" : "border-gray-700"
+                          }`}
+            />
+            {telefoneManual && !telefoneOk && (
+              <p className="mt-1 text-[11px] text-amber-400">
+                {telSemDDD
+                  ? "Faltou o DDD — sem ele a Meta não consegue achar o cliente."
+                  : "Telefone incompleto: precisa de DDD + 8 ou 9 dígitos."}
+              </p>
+            )}
+            {!telefoneManual && (
+              <p className="mt-1 text-[11px] text-gray-600">
+                Obrigatório: é por ele que a Meta identifica o cliente.
+              </p>
+            )}
+          </div>
+
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
             <input type="text" inputMode="decimal" placeholder="Valor da venda" value={valorManual}
@@ -593,14 +634,14 @@ function CardNotaFiscal({ leadsAbertos }) {
             className="w-full h-11 rounded-xl border border-gray-700 bg-gray-950 px-3 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent/40" />
 
           {/* A pergunta que o vendedor precisa responder */}
-          <button type="button" disabled={!(valorNum > 0) || salvando}
+          <button type="button" disabled={!podeRegistrar}
             onClick={registrar(true)}
             className="w-full py-4 rounded-xl bg-accent text-black text-sm font-bold inline-flex items-center justify-center gap-2 hover:bg-accent-hover transition-colors disabled:opacity-40">
             {salvando ? <Loader2 size={16} className="animate-spin" /> : <Megaphone size={16} />}
             Cliente veio de anúncio
           </button>
 
-          <button type="button" disabled={!(valorNum > 0) || salvando}
+          <button type="button" disabled={!podeRegistrar}
             onClick={registrar(false)}
             className="w-full py-3.5 rounded-xl border border-gray-700 text-gray-300 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:border-gray-500 transition-colors disabled:opacity-40">
             <Store size={15} /> Não veio de anúncio
